@@ -1,0 +1,223 @@
+╔══════════════════════════════════════════════════════════════════╗
+║           MATHMAGICO — GUÍA DE DESPLIEGUE EN RENDER              ║
+║         Servidor siempre en línea, gratis, sin tu PC             ║
+╚══════════════════════════════════════════════════════════════════╝
+
+Una vez completado, podrás registrarte y usar la app desde cualquier
+celular en cualquier red, sin necesitar tu PC encendida.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PASO 1 — CREAR CUENTA EN GITHUB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Abre el navegador y ve a:   https://github.com
+2. Clic en "Sign up" (esquina superior derecha)
+3. Ingresa tu correo, una contraseña y un nombre de usuario
+4. Verifica tu correo cuando te llegue el email de confirmación
+5. Inicia sesión en GitHub
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PASO 2 — CREAR REPOSITORIO EN GITHUB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Estando en github.com, clic en el botón verde "New" o en el "+"
+   de la esquina superior derecha → "New repository"
+
+2. Rellena el formulario así:
+     Repository name:  mathmagico-backend
+     Description:      Backend de MathMagico
+     Visibility:       Public  (elige Public)
+
+   ⚠️ NO marques "Add a README file" ni nada más
+
+3. Clic en el botón verde "Create repository"
+
+4. GitHub te mostrará una página con instrucciones. Copia la URL
+   que aparece, se ve así:
+     https://github.com/TU_USUARIO/mathmagico-backend.git
+
+   Guarda esa URL, la necesitas en el Paso 3.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PASO 3 — SUBIR EL CÓDIGO A GITHUB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Abre una terminal en tu PC (PowerShell o CMD)
+
+2. Ejecuta estos comandos UNO POR UNO.
+   Reemplaza TU_USUARIO por tu nombre de usuario de GitHub:
+
+   cd C:\Users\Desktop\mathmagico
+
+   git remote add origin https://github.com/TU_USUARIO/mathmagico-backend.git
+
+   git branch -M main
+
+   git push -u origin main
+
+3. La terminal te pedirá usuario y contraseña de GitHub.
+   - Usuario: tu nombre de usuario de GitHub
+   - Contraseña: GitHub ya no acepta contraseñas normales aquí.
+     Debes usar un "Token". Sigue estos pasos para crearlo:
+
+   a) En GitHub, clic en tu foto (arriba a la derecha) → Settings
+   b) Baja hasta "Developer settings" (al final del menú izquierdo)
+   c) Clic en "Personal access tokens" → "Tokens (classic)"
+   d) Clic "Generate new token" → "Generate new token (classic)"
+   e) En "Note" escribe: mathmagico
+   f) En "Expiration" elige: 90 days
+   g) Marca la casilla: repo  (la primera del listado)
+   h) Baja y clic "Generate token"
+   i) COPIA el token que aparece (empieza con ghp_...)
+      ⚠️ Solo se muestra UNA VEZ, guárdalo
+   j) Vuelve a la terminal y pega ese token como contraseña
+
+4. Si todo salió bien verás algo como:
+     remote: Resolving deltas: done.
+     Branch 'main' set up to track remote origin/main.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PASO 4 — CREAR CUENTA EN RENDER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Ve a:   https://render.com
+2. Clic en "Get Started for Free"
+3. Elige "Sign up with GitHub" (más fácil, conecta todo automático)
+4. Autoriza a Render a acceder a tu GitHub
+5. Ya estás dentro del dashboard de Render
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PASO 5 — CREAR BASE DE DATOS POSTGRESQL EN RENDER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. En el dashboard de Render, clic en "New +"
+2. Clic en "PostgreSQL"
+3. Rellena el formulario:
+     Name:    mathmagico-db
+     Plan:    Free
+4. Clic en "Create Database"
+5. Espera 1-2 minutos hasta que el estado diga "Available"
+6. Clic en la base de datos creada y busca la sección
+   "Connections". Copia el valor de:
+     Internal Database URL
+   Se ve así:
+     postgresql://mathmagico_db_user:XXXXX@dpg-XXXXX/mathmagico_db
+
+   Guárdalo, lo necesitas en el Paso 6.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PASO 6 — CREAR EL SERVICIO WEB EN RENDER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. En el dashboard de Render, clic en "New +"
+2. Clic en "Web Service"
+3. En "Source Code" elige "Connect a repository"
+4. Busca y selecciona: mathmagico-backend
+5. Rellena el formulario:
+
+     Name:              mathmagico-backend
+     Region:            Oregon (US West) o el más cercano
+     Branch:            main
+     Root Directory:    backend
+     Runtime:           Python 3
+     Build Command:     pip install -r requirements.txt
+     Start Command:     uvicorn main:app --host 0.0.0.0 --port $PORT
+     Plan:              Free
+
+6. Baja hasta la sección "Environment Variables" y agrega estas:
+
+   Clic "Add Environment Variable" por cada una:
+
+   KEY                VALUE
+   ───────────────    ─────────────────────────────────────────────
+   DATABASE_URL       [pega aquí la Internal Database URL del Paso 5]
+   SECRET_KEY         mathmagico-super-secret-2024
+   DEBUG              false
+
+7. Clic en el botón "Create Web Service"
+
+8. Render comenzará a desplegar. Verás los logs en tiempo real.
+   Espera hasta que aparezca:
+     ✅ Tablas creadas correctamente
+     INFO: Uvicorn running on http://0.0.0.0:XXXX
+
+   Esto tarda entre 3 y 8 minutos la primera vez.
+
+9. Cuando esté listo, arriba verás tu URL pública:
+     https://mathmagico-backend.onrender.com
+
+   Guarda esa URL.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PASO 7 — VERIFICAR QUE FUNCIONA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+En el navegador de tu celular o PC ve a:
+
+   https://mathmagico-backend.onrender.com/health
+
+Debe responder:
+   {"status":"healthy"}
+
+Si ves eso, el servidor está funcionando correctamente.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PASO 8 — CONFIGURAR LA APP EN EL CELULAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Abre MathMágico en tu celular
+2. Toca "Portal del Profesor"
+3. Toca "Configurar servidor" (texto pequeño debajo del formulario)
+4. Borra la URL actual y escribe:
+
+   https://mathmagico-backend.onrender.com/api/v1
+
+   ⚠️ Asegúrate de escribir exactamente así, sin espacios ni barra
+      al final
+
+5. Toca "Guardar"
+6. Intenta registrarte con tu nombre, correo y contraseña
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ NOTAS IMPORTANTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• PLAN GRATUITO DE RENDER: El servidor "se duerme" después de
+  15 minutos sin uso. La primera petición después de eso tarda
+  30-60 segundos en despertar. Es normal.
+
+• TU PC NO NECESITA ESTAR ENCENDIDA. El servidor vive en Render.
+
+• LA URL NO CAMBIA. A diferencia de Serveo/LocalTunnel, la URL
+  de Render es permanente. Solo configúrala una vez.
+
+• ACTUALIZACIONES: Si cambias el código del backend, solo ejecuta:
+    git add backend/
+    git commit -m "nueva actualización"
+    git push
+  Render detectará el cambio y redespliegue automáticamente.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PROBLEMAS FRECUENTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROBLEMA: El despliegue falla con error de módulo no encontrado
+SOLUCIÓN: Verifica que Root Directory sea "backend" (no la raíz)
+
+PROBLEMA: Error "could not connect to server" en la base de datos
+SOLUCIÓN: Verifica que la DATABASE_URL sea la "Internal" URL,
+          no la "External"
+
+PROBLEMA: La app tarda mucho en responder la primera vez
+SOLUCIÓN: Es normal, el servidor estaba dormido. Espera 30-60 seg.
+
+PROBLEMA: "Error al registrar" en la app
+SOLUCIÓN: Verifica la URL en "Configurar servidor":
+          debe terminar en /api/v1 sin barra al final
+
+╔══════════════════════════════════════════════════════════════════╗
+║  URL FINAL DE TU SERVIDOR:                                       ║
+║  https://mathmagico-backend.onrender.com/api/v1                 ║
+║                                                                  ║
+║  (puede variar según el nombre que elegiste en Render)           ║
+╚══════════════════════════════════════════════════════════════════╝

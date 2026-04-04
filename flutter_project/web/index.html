@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="flutter_project">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>MathMágico</title>
+  <link rel="manifest" href="manifest.json">
+
+</head>
+<body>
+  <!--
+    You can customize the "flutter_bootstrap.js" script.
+    This is useful to provide a custom configuration to the Flutter loader
+    or to give the user feedback during the initialization process.
+
+    For more details:
+    * https://docs.flutter.dev/platform-integration/web/initialization
+  -->
+  <script src="flutter_bootstrap.js" async></script>
+
+  <!-- MathMágico Audio Engine — Web Audio API + Web Speech API -->
+  <script>
+    window.mathMagicoAudio = {
+
+      // ── Web Audio API (efectos de sonido) ────────────────
+      _ctx: null,
+
+      _getCtx: function () {
+        if (!this._ctx) {
+          this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this._ctx.state === 'suspended') this._ctx.resume();
+        return this._ctx;
+      },
+
+      _tone: function (ctx, freq, start, dur, vol, type) {
+        var osc  = ctx.createOscillator();
+        var gain = ctx.createGain();
+        var filt = ctx.createBiquadFilter();
+        filt.type = 'lowpass';
+        filt.frequency.value = 4000;
+        osc.connect(filt); filt.connect(gain); gain.connect(ctx.destination);
+        osc.type = type || 'sine';
+        osc.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(0, start);
+        gain.gain.linearRampToValueAtTime(vol, start + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
+        osc.start(start);
+        osc.stop(start + dur + 0.05);
+      },
+
+      /* ✅ Correcto — Do·Mi·Sol·Do brillante */
+      playCorrect: function () {
+        var ctx = this._getCtx(), t = ctx.currentTime;
+        this._tone(ctx, 523.25, t,        0.18, 0.30, 'sine');
+        this._tone(ctx, 659.25, t + 0.10, 0.18, 0.30, 'sine');
+        this._tone(ctx, 783.99, t + 0.20, 0.22, 0.30, 'sine');
+        this._tone(ctx, 1046.5, t + 0.31, 0.30, 0.25, 'sine');
+        this._tone(ctx, 1318.5, t + 0.40, 0.18, 0.14, 'sine'); // brillo
+      },
+
+      /* ❌ Incorrecto — suave, nunca asustador */
+      playIncorrect: function () {
+        var ctx = this._getCtx(), t = ctx.currentTime;
+        this._tone(ctx, 440.0,  t,        0.20, 0.18, 'sine');
+        this._tone(ctx, 392.0,  t + 0.18, 0.24, 0.14, 'sine');
+        this._tone(ctx, 349.23, t + 0.36, 0.20, 0.10, 'sine');
+      },
+
+      /* 🎉 Celebración completa — fanfarria ascendente */
+      playCelebration: function () {
+        var ctx = this._getCtx(), t = ctx.currentTime;
+        var m = [261.63,329.63,392.0,523.25,659.25,783.99,1046.5,1318.5];
+        for (var i = 0; i < m.length; i++)
+          this._tone(ctx, m[i], t + i*0.09, 0.25, 0.22, 'sine');
+        this._tone(ctx, 2093.0, t + m.length*0.09, 0.35, 0.14, 'sine');
+      },
+
+      /* 👆 Toque — pop amigable */
+      playTap: function () {
+        var ctx = this._getCtx(), t = ctx.currentTime;
+        this._tone(ctx, 900,  t,       0.07, 0.22, 'sine');
+        this._tone(ctx, 1200, t+0.04, 0.05, 0.12, 'sine');
+      },
+
+      /* 🏆 Logro — escala mágica */
+      playUnlock: function () {
+        var ctx = this._getCtx(), t = ctx.currentTime;
+        var n = [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98];
+        for (var i = 0; i < n.length; i++)
+          this._tone(ctx, n[i], t + i*0.11, 0.28, 0.20, 'sine');
+      },
+
+      /* 🔢 Selección — tick sutil */
+      playSelect: function () {
+        var ctx = this._getCtx(), t = ctx.currentTime;
+        this._tone(ctx, 700, t, 0.05, 0.16, 'sine');
+      },
+
+      // ── Web Speech API (voz de texto) ───────────────────
+      _voice: null,
+      _voiceReady: false,
+
+      /* Carga la mejor voz española disponible en el navegador */
+      initVoice: function () {
+        var self = this;
+        if (!window.speechSynthesis) return;
+
+        var load = function () {
+          var voices = window.speechSynthesis.getVoices();
+          if (!voices || voices.length === 0) return;
+
+          // Prioridad: voces amigables para niños en español
+          var preferred = [
+            'Google español',
+            'Google español de Estados Unidos',
+            'Microsoft Sabina',          // Windows es-MX
+            'Microsoft Helena',          // Windows es-ES
+            'Paulina',                   // macOS es-MX
+            'Monica',  'Mónica',         // macOS es-ES
+          ];
+
+          // 1) Buscar por nombre exacto preferido
+          for (var p = 0; p < preferred.length; p++) {
+            for (var v = 0; v < voices.length; v++) {
+              if (voices[v].name.indexOf(preferred[p]) !== -1) {
+                self._voice = voices[v];
+                self._voiceReady = true;
+                return;
+              }
+            }
+          }
+          // 2) Cualquier voz femenina en español
+          for (var v = 0; v < voices.length; v++) {
+            var n = voices[v].name.toLowerCase();
+            if (voices[v].lang.startsWith('es') &&
+                (n.indexOf('female') !== -1 || n.indexOf('mujer') !== -1)) {
+              self._voice = voices[v];
+              self._voiceReady = true;
+              return;
+            }
+          }
+          // 3) Cualquier voz en español
+          for (var v = 0; v < voices.length; v++) {
+            if (voices[v].lang.startsWith('es')) {
+              self._voice = voices[v];
+              self._voiceReady = true;
+              return;
+            }
+          }
+          // 4) Fallback: primera disponible
+          if (voices.length > 0) {
+            self._voice = voices[0];
+            self._voiceReady = true;
+          }
+        };
+
+        load();
+        window.speechSynthesis.onvoiceschanged = load;
+      },
+
+      /*
+       * speak(text, rate, pitch)
+       *   rate  — 0.75 instrucción | 0.85 normal | 1.0 festivo
+       *   pitch — 1.3 niño/a | 1.2 normal
+       */
+      speak: function (text, rate, pitch) {
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+        var u = new SpeechSynthesisUtterance(text);
+        if (this._voice) u.voice = this._voice;
+        u.lang   = 'es-ES';
+        u.rate   = (rate  !== undefined) ? rate  : 0.88;
+        u.pitch  = (pitch !== undefined) ? pitch : 1.25;
+        u.volume = 1.0;
+        // Chrome bug: cancel & tiny delay needed on long texts
+        setTimeout(function () {
+          window.speechSynthesis.speak(u);
+        }, 50);
+      },
+
+      stopSpeech: function () {
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+      },
+    };
+
+    // Iniciar carga de voz lo antes posible
+    window.mathMagicoAudio.initVoice();
+  </script>
+
+</body>
+</html>
