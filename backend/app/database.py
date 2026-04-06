@@ -8,8 +8,6 @@ class Base(DeclarativeBase):
 
 
 # ── Motor singleton ───────────────────────────────────────
-# Se crea una sola vez al primer uso y se reutiliza en cada request.
-# Esto evita agotar el pool de conexiones de PostgreSQL en Render (máx 25).
 _engine = None
 _session_factory = None
 
@@ -21,21 +19,26 @@ def _get_or_create_engine(database_url: str):
 
     is_postgres = "postgresql" in database_url or "asyncpg" in database_url
 
-    connect_args = {}
     if is_postgres:
-        # Render PostgreSQL exige SSL; asyncpg acepta este parámetro
-        connect_args = {"ssl": "require"}
+        # PostgreSQL: pool completo + SSL requerido por Render
+        _engine = create_async_engine(
+            database_url,
+            echo=False,
+            future=True,
+            pool_pre_ping=True,
+            pool_size=5,
+            max_overflow=5,
+            pool_recycle=1800,
+            connect_args={"ssl": "require"},
+        )
+    else:
+        # SQLite: NullPool no admite pool_size ni max_overflow
+        _engine = create_async_engine(
+            database_url,
+            echo=False,
+            future=True,
+        )
 
-    _engine = create_async_engine(
-        database_url,
-        echo=False,
-        future=True,
-        pool_pre_ping=True,          # descarta conexiones muertas
-        pool_size=5,                 # conexiones activas en el pool
-        max_overflow=5,              # extras temporales bajo carga
-        pool_recycle=1800,           # recicla conexiones cada 30 min
-        connect_args=connect_args,
-    )
     _session_factory = async_sessionmaker(
         _engine, class_=AsyncSession, expire_on_commit=False
     )
@@ -44,7 +47,7 @@ def _get_or_create_engine(database_url: str):
 
 async def init_db():
     from app.config import settings
-    from app import models  # noqa – importar para registrar los modelos
+    from app import models  # noqa
     engine, _ = _get_or_create_engine(settings.async_database_url)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
