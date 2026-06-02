@@ -65,7 +65,8 @@ class ActivitySubmitRequest(BaseModel):
     correct_answers: int
     points_earned: int
     time_taken_seconds: int
-    accuracy: float
+    # accuracy eliminado: dato derivado (correct_answers / total_questions) — 3FN
+    accuracy: float = 0.0  # aceptado del cliente pero no almacenado
     completed_at: str
     question_results: List[QuestionResultItem] = []
 

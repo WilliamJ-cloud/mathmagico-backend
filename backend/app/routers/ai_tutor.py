@@ -6,7 +6,7 @@ import httpx
 from loguru import logger
 
 from app.database import get_db
-from app.models import User, Session, AiAnalysis
+from app.models import User, Session, AiAnalysis, AiRecommendation, AiSkillAssessment
 from app.schemas import HintRequest, HintResponse, AnalysisResponse
 from app.config import settings
 import uuid
@@ -216,15 +216,24 @@ Proporciona tu análisis en el formato JSON indicado."""
 
         analysis = json.loads(text)
 
-        # Guardar análisis en BD
+        # Guardar análisis en BD (1FN: listas en tablas propias)
         ai_rec = AiAnalysis(
             id=str(uuid.uuid4()),
             user_id=user_id,
             insight=analysis.get("insight", ""),
-            recommended_activities=analysis.get("recommended_activities", []),
-            weak_skills=analysis.get("weak_skills", []),
-            strong_skills=analysis.get("strong_skills", []),
         )
+        for i, act in enumerate(analysis.get("recommended_activities", [])):
+            ai_rec.recommended_activities.append(
+                AiRecommendation(id=str(uuid.uuid4()), activity_type=act, position=i)
+            )
+        for skill in analysis.get("weak_skills", []):
+            ai_rec.skill_assessments.append(
+                AiSkillAssessment(id=str(uuid.uuid4()), skill_name=skill, assessment_type="weak")
+            )
+        for skill in analysis.get("strong_skills", []):
+            ai_rec.skill_assessments.append(
+                AiSkillAssessment(id=str(uuid.uuid4()), skill_name=skill, assessment_type="strong")
+            )
         db.add(ai_rec)
         await db.commit()
 

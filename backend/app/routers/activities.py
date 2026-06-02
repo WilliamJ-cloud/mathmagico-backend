@@ -1,85 +1,86 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select
 from typing import List
-import random
 import uuid
 
 from app.database import get_db
-from app.models import User, Session, Question
-from app.schemas import (
-    QuestionResponse,
-    ActivitySubmitRequest,
-    ActivitySubmitResponse,
-)
+from app.models import User, Session, Question, QuestionOperand, QuestionChoice, QuestionResult, UserAchievement, UserSkillLevel, calc_level
+from app.schemas import QuestionResponse, ActivitySubmitRequest, ActivitySubmitResponse
 from app.services.question_generator import QuestionGenerator
 
 router = APIRouter()
 generator = QuestionGenerator()
 
-# Logros disponibles con sus condiciones
 ACHIEVEMENTS = {
-    "primer_suma": lambda sessions, user: any(s.activity_type == "suma_visual" for s in sessions),
-    "contador_experto": lambda sessions, user: sum(
-        1 for s in sessions if s.activity_type == "conteo" and s.accuracy == 1.0
+    "primer_suma":      lambda sessions, achievements: any(s.activity_type == "suma_visual" for s in sessions),
+    "contador_experto": lambda sessions, achievements: sum(
+        1 for s in sessions if s.activity_type == "conteo" and s.accuracy >= 1.0
     ) >= 10,
-    "cien_puntos": lambda sessions, user: (user.total_points or 0) >= 100,
-    "sin_pistas": lambda sessions, user: any(
-        all(not r.get("hints_used") for r in (s.question_results or []))
+    "cien_puntos":      lambda sessions, achievements: False,  # se evalúa por puntos en submit
+    "sin_pistas":       lambda sessions, achievements: any(
+        all(r.hints_used == 0 for r in s.question_results) and len(s.question_results) > 0
         for s in sessions
     ),
+}
+
+SKILL_MAP = {
+    "suma_visual":      "suma",
+    "resta_visual":     "resta",
+    "conteo":           "conteo",
+    "comparar":         "comparar",
+    "secuencias":       "secuencias",
+    "reconocer_numeros":"reconocer",
 }
 
 
 @router.get("/questions", response_model=List[QuestionResponse])
 async def get_questions(
-    activity_type: str = Query(..., description="Tipo de actividad"),
-    difficulty: str = Query("facil", description="Dificultad: facil, medio, dificil"),
-    user_id: str = Query(...),
-    count: int = Query(5, ge=3, le=10),
-    db: AsyncSession = Depends(get_db),
+    activity_type: str = Query(...),
+    difficulty: str    = Query("facil"),
+    user_id: str       = Query(...),
+    count: int         = Query(5, ge=3, le=10),
+    db: AsyncSession   = Depends(get_db),
 ):
-    """
-    Genera preguntas adaptadas al nivel del usuario.
-    Usa el historial para ajustar dificultad dinámicamente.
-    """
-    # Obtener historial reciente del usuario para adaptar
+    # Adaptar dificultad según historial reciente
     result = await db.execute(
         select(Session)
         .where(Session.user_id == user_id, Session.activity_type == activity_type)
         .order_by(Session.completed_at.desc())
         .limit(5)
     )
-    recent_sessions = result.scalars().all()
+    recent = result.scalars().all()
 
-    # Calcular precisión reciente para adaptar dificultad
-    if recent_sessions:
-        avg_accuracy = sum(s.accuracy for s in recent_sessions) / len(recent_sessions)
-        if avg_accuracy >= 0.85 and difficulty == "facil":
+    if recent:
+        avg = sum(s.accuracy for s in recent) / len(recent)
+        if avg >= 0.85 and difficulty == "facil":
             difficulty = "medio"
-        elif avg_accuracy >= 0.9 and difficulty == "medio":
+        elif avg >= 0.9 and difficulty == "medio":
             difficulty = "dificil"
-        elif avg_accuracy < 0.4 and difficulty != "facil":
+        elif avg < 0.4 and difficulty != "facil":
             difficulty = "facil"
 
-    # Generar preguntas
     questions = generator.generate(activity_type, difficulty, count)
 
-    # Guardar en BD para análisis posterior
     for q in questions:
         db_q = Question(
             id=q["id"],
             activity_type=activity_type,
             difficulty=difficulty,
             question_text=q["question_text"],
-            operands=q["operands"],
             correct_answer=q["correct_answer"],
-            choices=q["choices"],
             hint=q.get("hint"),
             emoji1=q.get("emoji1"),
             emoji2=q.get("emoji2"),
         )
+        # 1FN: operands y choices como filas separadas
+        for pos, val in enumerate(q["operands"]):
+            db_q.operands.append(QuestionOperand(id=str(uuid.uuid4()), position=pos, value=int(val)))
+        for pos, val in enumerate(q["choices"]):
+            db_q.choices.append(QuestionChoice(id=str(uuid.uuid4()), position=pos, value=int(val)))
+
         db.add(db_q)
+
     try:
         await db.commit()
     except Exception:
@@ -93,78 +94,82 @@ async def submit_activity(
     data: ActivitySubmitRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Guardar resultado de sesión y actualizar progreso del usuario."""
-
-    # Guardar sesión
+    # Guardar sesión (sin accuracy: es dato derivado)
     session = Session(
         id=str(uuid.uuid4()),
         user_id=data.user_id,
         activity_type=data.activity_id,
+        difficulty="facil",
         total_questions=data.total_questions,
         correct_answers=data.correct_answers,
         points_earned=data.points_earned,
         time_taken_seconds=data.time_taken_seconds,
-        accuracy=data.accuracy,
-        question_results=[r.model_dump() for r in data.question_results],
     )
+
+    # 1FN: guardar resultados por pregunta en tabla propia
+    for r in data.question_results:
+        session.question_results.append(QuestionResult(
+            id=str(uuid.uuid4()),
+            question_id=r.question_id if r.question_id else None,
+            is_correct=r.is_correct,
+            answer_given=r.user_answer,
+            hints_used=r.hints_used,
+        ))
+
     db.add(session)
 
-    # Obtener usuario y actualizar puntos
+    # Actualizar usuario
     result = await db.execute(select(User).where(User.id == data.user_id))
     user = result.scalar_one_or_none()
 
     achievements_unlocked = []
     if user:
-        # Actualizar puntos
         user.total_points = (user.total_points or 0) + data.points_earned
 
-        # Actualizar nivel
-        pts = user.total_points
-        if pts >= 1000:
-            user.level = 5
-        elif pts >= 600:
-            user.level = 4
-        elif pts >= 300:
-            user.level = 3
-        elif pts >= 100:
-            user.level = 2
-        else:
-            user.level = 1
+        # Logro "cien_puntos"
+        earned_keys = {a.achievement_key for a in user.achievements}
+        if "cien_puntos" not in earned_keys and user.total_points >= 100:
+            user.achievements.append(UserAchievement(
+                id=str(uuid.uuid4()), achievement_key="cien_puntos"
+            ))
+            achievements_unlocked.append("cien_puntos")
 
-        # Actualizar habilidad correspondiente
-        skill_map = {
-            "suma_visual": "suma",
-            "resta_visual": "resta",
-            "conteo": "conteo",
-            "comparar": "comparar",
-            "secuencias": "secuencias",
-            "reconocer_numeros": "reconocer",
-        }
-        skill_key = skill_map.get(data.activity_id, data.activity_id)
-        skills = dict(user.skill_levels or {})
-        current = skills.get(skill_key, 0)
-        # Media exponencial: combina valor previo con nueva precisión
-        new_val = int(current * 0.7 + data.accuracy * 100 * 0.3)
-        skills[skill_key] = min(100, new_val)
-        user.skill_levels = skills
-
-        # Verificar logros
-        all_sessions_result = await db.execute(
-            select(Session).where(Session.user_id == data.user_id)
+        # Actualizar nivel de habilidad (1FN: en tabla user_skill_levels)
+        skill_key = SKILL_MAP.get(data.activity_id, data.activity_id)
+        skill_result = await db.execute(
+            select(UserSkillLevel)
+            .where(UserSkillLevel.user_id == data.user_id,
+                   UserSkillLevel.skill_name == skill_key)
         )
-        all_sessions = all_sessions_result.scalars().all()
-        earned = list(user.achievements or [])
+        skill_row = skill_result.scalar_one_or_none()
+        new_val = int((skill_row.level if skill_row else 0) * 0.7 + data.accuracy * 100 * 0.3)
+        new_val = min(100, new_val)
+
+        if skill_row:
+            skill_row.level = new_val
+        else:
+            db.add(UserSkillLevel(
+                id=str(uuid.uuid4()),
+                user_id=data.user_id,
+                skill_name=skill_key,
+                level=new_val,
+            ))
+
+        # Verificar otros logros
+        all_sessions_r = await db.execute(select(Session).where(Session.user_id == data.user_id))
+        all_sessions = all_sessions_r.scalars().all()
 
         for ach_id, condition in ACHIEVEMENTS.items():
-            if ach_id not in earned:
+            if ach_id not in earned_keys and ach_id != "cien_puntos":
                 try:
-                    if condition(all_sessions + [session], user):
-                        earned.append(ach_id)
+                    if condition(all_sessions + [session], earned_keys):
+                        user.achievements.append(UserAchievement(
+                            id=str(uuid.uuid4()), achievement_key=ach_id
+                        ))
                         achievements_unlocked.append(ach_id)
+                        earned_keys.add(ach_id)
                 except Exception:
                     pass
-
-        user.achievements = earned
 
     await db.commit()
 
