@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-import anthropic
+from groq import Groq
+import httpx
 from loguru import logger
 
 from app.database import get_db
@@ -12,13 +13,13 @@ import uuid
 
 router = APIRouter()
 
-# Cliente Anthropic
+# Cliente Groq
 _client = None
 
-def get_anthropic_client():
+def get_groq_client():
     global _client
-    if _client is None and settings.anthropic_api_key:
-        _client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    if _client is None and settings.groq_api_key:
+        _client = Groq(api_key=settings.groq_api_key, http_client=httpx.Client(verify=False))
     return _client
 
 
@@ -83,7 +84,7 @@ async def get_hint(
         "reconocer_numeros": f"Mira la forma del número. ¿Lo reconoces? Puedes contarlo en la línea de números. ¡Tú puedes!",
     }
 
-    client = get_anthropic_client()
+    client = get_groq_client()
     if not client:
         hint_text = default_hints.get(activity, "Inténtalo paso a paso. ¡Tú puedes!")
         return HintResponse(hint=hint_text, spoken_hint=hint_text)
@@ -98,14 +99,16 @@ Contexto: {ctx}
 
 El niño necesita una pista. Dame una pista concreta y visual de máximo 2 oraciones."""
 
-        message = client.messages.create(
-            model="claude-3-haiku-20240307",
+        completion = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
             max_tokens=150,
-            system=SYSTEM_PROMPT_TUTOR,
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT_TUTOR},
+                {"role": "user", "content": prompt},
+            ],
         )
 
-        hint_text = message.content[0].text.strip()
+        hint_text = completion.choices[0].message.content.strip()
         return HintResponse(hint=hint_text, spoken_hint=hint_text)
 
     except Exception as e:
@@ -164,8 +167,8 @@ async def get_analysis(
     weak = [k for k, v in skill_accuracies.items() if v < 0.6]
     strong = [k for k, v in skill_accuracies.items() if v >= 0.8]
 
-    # Intentar análisis con Claude
-    client = get_anthropic_client()
+    # Intentar análisis con Groq
+    client = get_groq_client()
     if not client:
         # Análisis basado en reglas
         insight = _rule_based_insight(user.name, skill_accuracies)
@@ -194,15 +197,17 @@ Sesiones completadas: {len(sessions)}
 
 Proporciona tu análisis en el formato JSON indicado."""
 
-        message = client.messages.create(
-            model="claude-3-haiku-20240307",
+        completion = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
             max_tokens=400,
-            system=SYSTEM_PROMPT_ANALYST,
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT_ANALYST},
+                {"role": "user", "content": prompt},
+            ],
         )
 
         import json
-        text = message.content[0].text.strip()
+        text = completion.choices[0].message.content.strip()
         # Limpiar markdown si viene con ```json
         if "```" in text:
             text = text.split("```")[1]

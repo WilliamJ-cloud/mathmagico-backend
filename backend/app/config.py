@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     debug: bool = True
     secret_key: str = "mathmagico-secret-key-2024"
     database_url: str = "sqlite+aiosqlite:///./mathmagico.db"
-    anthropic_api_key: str = ""
+    groq_api_key: str = ""
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 10080
 
