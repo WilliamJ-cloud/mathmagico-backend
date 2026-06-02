@@ -126,3 +126,31 @@ class AnalysisResponse(BaseModel):
     weak_skills: List[str]
     strong_skills: List[str]
     encouragement: str
+
+
+# ==================== DIAGNÓSTICO BUTTERWORTH ====================
+
+class DiagnosticoPreguntaResponse(BaseModel):
+    id: int
+    texto: str
+    emoji: str
+    audio: str
+    indicador: str
+
+
+class DiagnosticoRespuestaItem(BaseModel):
+    pregunta_id: int
+    respuesta: bool  # True = Sí, False = No
+
+
+class DiagnosticoSubmitRequest(BaseModel):
+    user_id: str
+    respuestas: List[DiagnosticoRespuestaItem]
+
+
+class DiagnosticoResultadoResponse(BaseModel):
+    diagnostico_id: str
+    total_dificultades: int
+    nivel_riesgo: str          # sin_riesgo / moderado / alto
+    mensaje: str
+    actividades_recomendadas: List[str]

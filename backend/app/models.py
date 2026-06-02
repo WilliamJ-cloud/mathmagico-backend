@@ -9,6 +9,66 @@ def gen_uuid():
     return str(uuid.uuid4())
 
 
+# ── Preguntas del diagnóstico Butterworth (8 indicadores clave) ──────────────
+DIAGNOSTICO_PREGUNTAS = [
+    {
+        "id": 1,
+        "texto": "¿Puedes contar estos objetos tocándolos uno por uno?",
+        "emoji": "🍎🍎🍎🍎",
+        "audio": "¿Puedes contar estos objetos tocándolos uno por uno?",
+        "indicador": "conteo_ordenado",
+    },
+    {
+        "id": 2,
+        "texto": "¿Sabes qué número es este?",
+        "emoji": "7️⃣",
+        "audio": "¿Sabes qué número es este?",
+        "indicador": "reconoce_numeros",
+    },
+    {
+        "id": 3,
+        "texto": "¿Puedes decir cuál grupo tiene más?",
+        "emoji": "🌟🌟🌟  vs  🌟🌟🌟🌟🌟",
+        "audio": "¿Puedes decir cuál grupo tiene más?",
+        "indicador": "compara_cantidades",
+    },
+    {
+        "id": 4,
+        "texto": "¿Puedes sumar usando tus dedos? Por ejemplo: 2 + 1",
+        "emoji": "✌️ + ☝️",
+        "audio": "¿Puedes sumar usando tus dedos? Por ejemplo: dos más uno",
+        "indicador": "suma_con_dedos",
+    },
+    {
+        "id": 5,
+        "texto": "¿Estos dos números te parecen iguales?",
+        "emoji": "6️⃣ y 9️⃣",
+        "audio": "¿Estos dos números te parecen iguales?",
+        "indicador": "confusion_numeros",
+    },
+    {
+        "id": 6,
+        "texto": "¿Puedes ordenar estos números del más pequeño al más grande?",
+        "emoji": "3️⃣ 1️⃣ 5️⃣ 2️⃣",
+        "audio": "¿Puedes ordenar estos números del más pequeño al más grande?",
+        "indicador": "orden_numeros",
+    },
+    {
+        "id": 7,
+        "texto": "¿Sabes que cada objeto que cuentas tiene un número diferente?",
+        "emoji": "🐶=1  🐱=2  🐭=3",
+        "audio": "¿Sabes que cuando cuentas, cada objeto tiene su propio número?",
+        "indicador": "correspondencia_uno_a_uno",
+    },
+    {
+        "id": 8,
+        "texto": "¿Puedes quitar objetos? Por ejemplo: tienes 3 manzanas y comes 1",
+        "emoji": "🍎🍎🍎 − 🍎",
+        "audio": "¿Puedes quitar objetos? Por ejemplo: tienes tres manzanas y comes una",
+        "indicador": "resta_con_objetos",
+    },
+]
+
 # ── Niveles por puntos (evita almacenar dato derivado) ────────────────────────
 def calc_level(total_points: int) -> int:
     if total_points >= 1000:
@@ -298,3 +358,38 @@ class AiSkillAssessment(Base):
     assessment_type = Column(String(10), nullable=False)  # 'weak' o 'strong'
 
     analysis = relationship("AiAnalysis", back_populates="skill_assessments")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DIAGNOSTICO  (Butterworth — 8 indicadores)
+# ══════════════════════════════════════════════════════════════════════════════
+class Diagnostico(Base):
+    __tablename__ = "diagnosticos"
+
+    id           = Column(String(36), primary_key=True, default=gen_uuid)
+    user_id      = Column(String(36), ForeignKey("users.id"), nullable=False)
+    # 3FN: riesgo es dato derivado, se calcula desde las respuestas
+    # Se almacena para consulta rápida del profesor
+    total_dificultades = Column(Integer, nullable=False)  # cuántos "no"
+    nivel_riesgo       = Column(String(20), nullable=False)  # sin_riesgo / moderado / alto
+    created_at         = Column(DateTime(timezone=True), server_default=func.now())
+
+    user       = relationship("User")
+    # 1FN: respuestas en tabla propia
+    respuestas = relationship("DiagnosticoRespuesta", back_populates="diagnostico",
+                              cascade="all, delete-orphan")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DIAGNOSTICO_RESPUESTAS  (1FN: cada respuesta es una fila)
+# ══════════════════════════════════════════════════════════════════════════════
+class DiagnosticoRespuesta(Base):
+    __tablename__ = "diagnostico_respuestas"
+
+    id              = Column(String(36), primary_key=True, default=gen_uuid)
+    diagnostico_id  = Column(String(36), ForeignKey("diagnosticos.id"), nullable=False)
+    pregunta_id     = Column(Integer, nullable=False)   # 1 al 8
+    indicador       = Column(String(50), nullable=False)
+    respuesta       = Column(Boolean, nullable=False)   # True=Sí, False=No
+
+    diagnostico = relationship("Diagnostico", back_populates="respuestas")

@@ -5,7 +5,7 @@ from loguru import logger
 
 from app.database import init_db
 from app.routers import users, activities, progress, ai_tutor
-from app.routers import reports, tts, teacher
+from app.routers import reports, tts, teacher, diagnostico
 from app.config import settings
 
 
@@ -39,7 +39,8 @@ app.include_router(progress.router,   prefix="/api/v1/progress",    tags=["Progr
 app.include_router(ai_tutor.router,   prefix="/api/v1/ai",          tags=["IA Tutor"])
 app.include_router(reports.router,    prefix="/api/v1/reports",     tags=["Reportes"])
 app.include_router(tts.router,        prefix="/api/v1/tts",         tags=["TTS Audio"])
-app.include_router(teacher.router,    prefix="/api/v1/teachers",    tags=["Profesores"])
+app.include_router(teacher.router,     prefix="/api/v1/teachers",     tags=["Profesores"])
+app.include_router(diagnostico.router, prefix="/api/v1/diagnostico",  tags=["Diagnóstico"])
 
 
 @app.get("/")
