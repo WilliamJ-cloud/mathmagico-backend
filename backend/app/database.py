@@ -51,6 +51,17 @@ async def init_db():
     engine, _ = _get_or_create_engine(settings.async_database_url)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Migración: hacer nullable columnas eliminadas en normalización 3FN
+        is_pg = "postgresql" in settings.async_database_url
+        if is_pg:
+            try:
+                await conn.execute(
+                    __import__("sqlalchemy").text(
+                        "ALTER TABLE sessions ALTER COLUMN accuracy DROP NOT NULL"
+                    )
+                )
+            except Exception:
+                pass  # Ya es nullable o no existe
     logger.info("✅ Tablas creadas correctamente")
 
 
