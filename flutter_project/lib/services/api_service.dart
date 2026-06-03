@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../config/constants.dart';
 
@@ -35,19 +37,46 @@ class ApiService {
   static Map<String, dynamic>? _parseStatic(http.Response res) {
     try {
       final body = utf8.decode(res.bodyBytes);
-      if (body.isEmpty) return null;
-      final decoded = jsonDecode(body);
-      if (decoded is Map<String, dynamic>) {
+
+      // Respuesta vacía
+      if (body.isEmpty) {
         if (res.statusCode >= 400) {
           return {
             'error': true,
             'status': res.statusCode,
-            'detail': decoded['detail']?.toString() ?? 'Error del servidor',
+            'detail': 'Error del servidor (${res.statusCode})',
           };
         }
-        return decoded;
+        return null;
       }
-      return {'data': decoded};
+
+      // Intentar parsear JSON
+      try {
+        final decoded = jsonDecode(body);
+        if (decoded is Map<String, dynamic>) {
+          if (res.statusCode >= 400) {
+            return {
+              'error': true,
+              'status': res.statusCode,
+              'detail': decoded['detail']?.toString()
+                  ?? decoded['message']?.toString()
+                  ?? 'Error del servidor (${res.statusCode})',
+            };
+          }
+          return decoded;
+        }
+        return {'data': decoded};
+      } catch (_) {
+        // El cuerpo no es JSON (ej: HTML de error de Render/uvicorn)
+        if (res.statusCode >= 400) {
+          return {
+            'error': true,
+            'status': res.statusCode,
+            'detail': 'Error del servidor (${res.statusCode})',
+          };
+        }
+        return null;
+      }
     } catch (e) {
       print('ApiService parse error: $e');
       return null;
@@ -62,7 +91,7 @@ class ApiService {
     try {
       final res = await http
           .get(Uri.parse('$_base$endpoint'), headers: _headersStatic())
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 90));
       return _parseStatic(res);
     } catch (e) {
       print('GET error: $e');
@@ -82,11 +111,16 @@ class ApiService {
             headers: _headersStatic(),
             body: jsonEncode(clean),
           )
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 90));
       return _parseStatic(res);
+    } on TimeoutException {
+      return {'error': true, 'detail': 'El servidor tardó demasiado. Espera 1 minuto e intenta de nuevo.'};
+    } on SocketException catch (e) {
+      return {'error': true, 'detail': 'Sin conexión al servidor: ${e.message}'};
+    } on HandshakeException catch (e) {
+      return {'error': true, 'detail': 'Error SSL: ${e.message}'};
     } catch (e) {
-      print('POST error: $e');
-      return null;
+      return {'error': true, 'detail': 'Error: $e'};
     }
   }
 
@@ -102,7 +136,7 @@ class ApiService {
             headers: _headersStatic(),
             body: jsonEncode(clean),
           )
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 90));
       return _parseStatic(res);
     } catch (e) {
       print('PUT error: $e');
@@ -290,5 +324,58 @@ class ApiService {
     required String studentId,
   }) {
     return '$_base/teachers/$teacherId/students/$studentId/report-pdf';
+  }
+
+  // ── Diagnóstico Butterworth ───────────────────────────────────────────────
+  static Future<List<dynamic>?> getDiagnosticoPreguntas() async {
+    try {
+      final res = await http.get(
+        Uri.parse('$_base/diagnostico/preguntas'),
+        headers: _headersStatic(),
+      ).timeout(const Duration(seconds: 10));
+      final body = utf8.decode(res.bodyBytes);
+      if (res.statusCode == 200) return jsonDecode(body) as List;
+    } catch (_) {}
+    return null;
+  }
+
+  static Future<Map<String, dynamic>?> submitDiagnostico({
+    required String userId,
+    required List<Map<String, dynamic>> respuestas,
+  }) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$_base/diagnostico/submit'),
+        headers: _headersStatic(),
+        body: jsonEncode({'user_id': userId, 'respuestas': respuestas}),
+      ).timeout(const Duration(seconds: 15));
+      final body = utf8.decode(res.bodyBytes);
+      if (res.statusCode == 200) return jsonDecode(body) as Map<String, dynamic>;
+    } catch (_) {}
+    return null;
+  }
+
+  static Future<Map<String, dynamic>?> getDiagnosticoResultado(String userId) async {
+    try {
+      final res = await http.get(
+        Uri.parse('$_base/diagnostico/resultado/$userId'),
+        headers: _headersStatic(),
+      ).timeout(const Duration(seconds: 10));
+      final body = utf8.decode(res.bodyBytes);
+      if (res.statusCode == 200) return jsonDecode(body) as Map<String, dynamic>;
+    } catch (_) {}
+    return null;
+  }
+
+  static Future<Map<String, dynamic>?> getDiagnosticoProfesor(String userId) async {
+    try {
+      final res = await http.get(
+        Uri.parse('$_base/diagnostico/profesor/$userId'),
+        headers: _headersStatic(),
+      ).timeout(const Duration(seconds: 10));
+      final body = utf8.decode(res.bodyBytes);
+      if (res.statusCode == 200) return jsonDecode(body) as Map<String, dynamic>;
+    } catch (_) {}
+    return null;
   }
 }

@@ -9,6 +9,7 @@ import '../services/storage_service.dart';
 import '../services/audio_service.dart';
 import 'home_screen.dart';
 import 'welcome_screen.dart';
+import 'diagnostico_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -147,9 +148,17 @@ class _SplashScreenState extends State<SplashScreen>
         await StorageService.instance.saveCurrentUserId(userModel.id);
         context.read<UserProvider>().setUser(userModel);
         context.read<AudioService>().speak(
-          '¡Hola ${userModel.name}! Bienvenido a MathMágico. ¡Vamos a aprender matemáticas!',
+          '¡Hola ${userModel.name}! Bienvenido a MathMágico. Primero haremos un pequeño diagnóstico.',
         );
-        _goToHome();
+        // Nuevo usuario → ir al diagnóstico antes del inicio
+        if (mounted) {
+          Navigator.of(context).pushReplacement(MaterialPageRoute(
+            builder: (_) => DiagnosticoScreen(
+              userId: userModel.id,
+              userName: userModel.name,
+            ),
+          ));
+        }
       } else {
         // Modo offline: crear usuario local
         _registerOffline();
