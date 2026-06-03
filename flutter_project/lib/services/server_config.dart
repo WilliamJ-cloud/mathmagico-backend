@@ -7,9 +7,8 @@ class ServerConfig {
   static const _key = 'server_url';
 
   // URL por defecto según plataforma
-  static String get _defaultUrl => kIsWeb
-      ? 'http://localhost:8000/api/v1'
-      : 'https://mathmagico-backend.onrender.com/api/v1';
+  static String get _defaultUrl =>
+      'https://mathmagico-backend.onrender.com/api/v1';
 
   static String _current = '';
 
@@ -18,7 +17,7 @@ class ServerConfig {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_key) ?? _defaultUrl;
     // Si la URL guardada apunta a una IP local antigua, migrar a Render
-    if (saved.contains('192.168') || saved.contains('localhost:8000') ||
+    if (saved.contains('192.168') || saved.contains('localhost') ||
         saved.contains('loca.lt') || saved.contains('serveo') ||
         !saved.startsWith('http')) {
       await prefs.setString(_key, _defaultUrl);
