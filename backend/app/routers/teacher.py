@@ -148,16 +148,6 @@ async def add_student(
         parent_name=str(data.get("parent_name") or ""),
         parent_phone=str(data.get("parent_phone") or ""),
         total_points=0,
-        level=1,
-        achievements=[],
-        skill_levels={
-            "conteo": 0,
-            "suma": 0,
-            "resta": 0,
-            "comparar": 0,
-            "secuencias": 0,
-            "reconocer": 0,
-        },
     )
     db.add(student)
     await db.commit()
