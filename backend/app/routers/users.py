@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from datetime import datetime, timedelta
 from jose import jwt
 import uuid
@@ -67,7 +68,7 @@ async def login_user(
     data: UserLoginRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(User).where(User.id == data.user_id))
+    result = await db.execute(select(User).options(selectinload(User.skill_levels), selectinload(User.achievements)).where(User.id == data.user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -80,7 +81,7 @@ async def login_user(
 async def search_users(name: str = Query(..., min_length=2),
                        db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(User).where(User.name.ilike(f"%{name}%")).limit(10)
+        select(User).options(selectinload(User.skill_levels), selectinload(User.achievements)).where(User.name.ilike(f"%{name}%")).limit(10)
     )
     users = result.scalars().all()
     return [_user_to_response(u) for u in users]
@@ -88,7 +89,7 @@ async def search_users(name: str = Query(..., min_length=2),
 
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(user_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(select(User).options(selectinload(User.skill_levels), selectinload(User.achievements)).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")

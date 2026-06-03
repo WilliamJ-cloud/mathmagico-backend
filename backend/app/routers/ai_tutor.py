@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from groq import Groq
 import httpx
 from loguru import logger
@@ -66,7 +67,7 @@ async def get_hint(
     """Generar una pista adaptativa para el niño."""
 
     # Obtener contexto del usuario
-    result = await db.execute(select(User).where(User.id == data.user_id))
+    result = await db.execute(select(User).options(selectinload(User.skill_levels), selectinload(User.achievements)).where(User.id == data.user_id))
     user = result.scalar_one_or_none()
 
     # Preparar contexto de la pregunta
@@ -125,7 +126,7 @@ async def get_analysis(
     """Análisis IA completo del progreso del niño con discalculia."""
 
     # Obtener datos del usuario
-    user_result = await db.execute(select(User).where(User.id == user_id))
+    user_result = await db.execute(select(User).options(selectinload(User.skill_levels), selectinload(User.achievements)).where(User.id == user_id))
     user = user_result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")

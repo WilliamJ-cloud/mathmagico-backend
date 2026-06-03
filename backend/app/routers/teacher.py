@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from datetime import datetime, timedelta
 import uuid
 import io
@@ -90,6 +91,7 @@ async def get_students(
 ):
     result = await db.execute(
         select(User)
+        .options(selectinload(User.skill_levels), selectinload(User.achievements))
         .where(User.teacher_id == teacher_id)
         .order_by(User.name)
     )
@@ -173,7 +175,9 @@ async def update_student(
     current: dict = Depends(get_current_teacher),
 ):
     result = await db.execute(
-        select(User).where(
+        select(User)
+        .options(selectinload(User.skill_levels), selectinload(User.achievements))
+        .where(
             User.id == student_id,
             User.teacher_id == teacher_id,
         )
@@ -209,7 +213,9 @@ async def delete_student(
     current: dict = Depends(get_current_teacher),
 ):
     result = await db.execute(
-        select(User).where(
+        select(User)
+        .options(selectinload(User.skill_levels), selectinload(User.achievements))
+        .where(
             User.id == student_id,
             User.teacher_id == teacher_id,
         )
@@ -233,7 +239,7 @@ async def get_student_progress(
     current: dict = Depends(get_current_teacher),
 ):
     sr = await db.execute(
-        select(User).where(User.id == student_id)
+        select(User).options(selectinload(User.skill_levels), selectinload(User.achievements)).where(User.id == student_id)
     )
     student = sr.scalar_one_or_none()
     if not student:
@@ -367,7 +373,7 @@ async def get_student_report_pdf(
     from fpdf import FPDF
 
     sr = await db.execute(
-        select(User).where(User.id == student_id)
+        select(User).options(selectinload(User.skill_levels), selectinload(User.achievements)).where(User.id == student_id)
     )
     student = sr.scalar_one_or_none()
     if not student:

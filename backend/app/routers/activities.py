@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from typing import List
 import uuid
 
@@ -119,7 +120,7 @@ async def submit_activity(
     db.add(session)
 
     # Actualizar usuario
-    result = await db.execute(select(User).where(User.id == data.user_id))
+    result = await db.execute(select(User).options(selectinload(User.skill_levels), selectinload(User.achievements)).where(User.id == data.user_id))
     user = result.scalar_one_or_none()
 
     achievements_unlocked = []

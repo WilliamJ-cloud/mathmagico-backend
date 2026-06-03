@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from datetime import datetime, timedelta
 
 from app.database import get_db
@@ -27,7 +28,7 @@ async def get_progress(
     """Obtener progreso detallado del usuario con análisis por habilidad."""
 
     # Verificar usuario
-    user_result = await db.execute(select(User).where(User.id == user_id))
+    user_result = await db.execute(select(User).options(selectinload(User.skill_levels), selectinload(User.achievements)).where(User.id == user_id))
     user = user_result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
