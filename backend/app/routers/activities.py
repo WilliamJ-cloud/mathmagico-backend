@@ -109,9 +109,10 @@ async def submit_activity(
 
     # 1FN: guardar resultados por pregunta en tabla propia
     for r in data.question_results:
-        session.question_results.append(QuestionResult(
+        db.add(QuestionResult(
             id=str(uuid.uuid4()),
-            question_id=r.question_id if r.question_id else None,
+            session_id=session.id,
+            question_id=None,  # No forzar FK que puede no existir
             is_correct=r.is_correct,
             answer_given=r.user_answer,
             hints_used=r.hints_used,
