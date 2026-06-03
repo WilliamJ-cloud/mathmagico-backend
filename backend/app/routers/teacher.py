@@ -110,16 +110,21 @@ async def get_students(
                 Session.user_id == s.id
             )
         )
+        # accuracy es propiedad calculada (3FN): correct_answers / total_questions
         avg_q = await db.execute(
-            select(func.avg(Session.accuracy)).where(
-                Session.user_id == s.id
-            )
+            select(
+                func.sum(Session.correct_answers),
+                func.sum(Session.total_questions)
+            ).where(Session.user_id == s.id)
         )
+        avg_row = avg_q.one()
+        total_correct = avg_row[0] or 0
+        total_questions = avg_row[1] or 1
+        avg_accuracy = round((total_correct / total_questions) * 100, 1)
+
         d = s.to_dict()
         d["total_sessions"] = cnt_q.scalar() or 0
-        d["avg_accuracy"] = round(
-            float(avg_q.scalar() or 0.0) * 100, 1
-        )
+        d["avg_accuracy"] = avg_accuracy
         d["last_activity"] = (
             last.completed_at.isoformat()
             if last and last.completed_at
@@ -333,11 +338,15 @@ async def get_dashboard(
             if (ar.scalar() or 0) > 0:
                 active += 1
         acc_r = await db.execute(
-            select(func.avg(Session.accuracy)).where(
-                Session.user_id.in_(student_ids)
-            )
+            select(
+                func.sum(Session.correct_answers),
+                func.sum(Session.total_questions)
+            ).where(Session.user_id.in_(student_ids))
         )
-        avg_acc = float(acc_r.scalar() or 0.0)
+        acc_row = acc_r.one()
+        tot_c = acc_row[0] or 0
+        tot_q = acc_row[1] or 1
+        avg_acc = tot_c / tot_q
 
     return {
         "total_students": total,
@@ -377,9 +386,9 @@ async def get_student_report_pdf(
     total_sess = len(sessions)
     avg_acc = 0.0
     if sessions:
-        avg_acc = (
-            sum(s.accuracy for s in sessions) / len(sessions) * 100
-        )
+        tot_c = sum(s.correct_answers for s in sessions)
+        tot_q = sum(s.total_questions for s in sessions)
+        avg_acc = (tot_c / tot_q * 100) if tot_q > 0 else 0.0
 
     skill_stats: dict = {}
     for s in sessions:

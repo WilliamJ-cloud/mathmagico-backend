@@ -18,7 +18,9 @@ class ServerConfig {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_key) ?? _defaultUrl;
     // Si la URL guardada apunta a una IP local antigua, migrar a Render
-    if (saved.contains('192.168') || saved.contains('localhost:8000') || saved.contains('loca.lt') || saved.contains('serveo')) {
+    if (saved.contains('192.168') || saved.contains('localhost:8000') ||
+        saved.contains('loca.lt') || saved.contains('serveo') ||
+        !saved.startsWith('http')) {
       await prefs.setString(_key, _defaultUrl);
       _current = _defaultUrl;
     } else {
@@ -31,7 +33,9 @@ class ServerConfig {
 
   /// Guarda una nueva URL y la activa inmediatamente
   static Future<void> save(String url) async {
-    final clean = url.trim().replaceAll(RegExp(r'/$'), '');
+    // Eliminar caracteres inválidos al inicio (puntos, espacios, etc.)
+    var clean = url.trim().replaceAll(RegExp(r'^[^a-zA-Z]+'), '');
+    clean = clean.replaceAll(RegExp(r'/$'), '');
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_key, clean);
     _current = clean;
