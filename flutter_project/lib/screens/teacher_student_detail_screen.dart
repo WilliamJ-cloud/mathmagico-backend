@@ -28,6 +28,7 @@ class TeacherStudentDetailScreen extends StatefulWidget {
 class _TeacherStudentDetailScreenState
     extends State<TeacherStudentDetailScreen> {
   Map<String, dynamic> _progress = {};
+  Map<String, dynamic>? _evaluacion;
   bool _isLoading = true;
   DateTime _calendarMonth = DateTime(DateTime.now().year, DateTime.now().month);
 
@@ -77,6 +78,19 @@ class _TeacherStudentDetailScreenState
       if (response.statusCode == 200 && mounted) {
         setState(() => _progress = jsonDecode(response.body));
       }
+
+      // Cargar evaluación de habilidades
+      try {
+        final evalRes = await http.get(
+          Uri.parse('${AppConstants.baseUrl}/diagnostico/profesor/${widget.student['id']}'),
+          headers: {'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ${widget.token}'},
+        ).timeout(const Duration(seconds: 8));
+        if (evalRes.statusCode == 200 && mounted) {
+          setState(() => _evaluacion = jsonDecode(evalRes.body));
+        }
+      } catch (_) {}
+
     } catch (e) {
       debugPrint('Error cargando progreso: $e');
     } finally {
@@ -269,6 +283,10 @@ class _TeacherStudentDetailScreenState
 
                   // Datos del tutor
                   _buildParentCard(student),
+                  const SizedBox(height: 16),
+
+                  // Evaluación de habilidades matemáticas
+                  _buildEvaluacionCard(),
                   const SizedBox(height: 16),
 
                   // Recomendación pedagógica
@@ -974,6 +992,187 @@ class _TeacherStudentDetailScreenState
       ),
     ).animate().slideY(begin: 0.1).fadeIn(delay: 150.ms),
     ]); // end Column
+  }
+
+  Widget _buildEvaluacionCard() {
+    if (_evaluacion == null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07),
+              blurRadius: 10, offset: const Offset(0, 4))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              const Text('📋', style: TextStyle(fontSize: 22)),
+              const SizedBox(width: 10),
+              Text('Evaluación de Habilidades',
+                style: GoogleFonts.nunito(fontSize: 16,
+                    fontWeight: FontWeight.w800, color: const Color(0xFF1A237E))),
+            ]),
+            const SizedBox(height: 12),
+            Text('El estudiante aún no ha realizado la evaluación de habilidades matemáticas.',
+              style: GoogleFonts.nunito(fontSize: 14, color: Colors.grey.shade600)),
+          ],
+        ),
+      );
+    }
+
+    final porcentaje = (_evaluacion!['porcentaje'] as num?)?.toDouble() ?? 0;
+    final correctas  = _evaluacion!['correctas'] as int? ?? 0;
+    final total      = _evaluacion!['total'] as int? ?? 15;
+    final nivel      = _evaluacion!['nivel_riesgo'] as String? ?? '';
+    final etiqueta   = _evaluacion!['etiqueta_nivel'] as String? ?? '';
+    final fecha      = _evaluacion!['fecha'] as String? ?? '';
+    final detalle    = List<Map<String, dynamic>>.from(
+        (_evaluacion!['detalle'] as List? ?? []).map((e) => Map<String, dynamic>.from(e)));
+
+    // Color según nivel
+    Color colorNivel;
+    switch (nivel) {
+      case 'alto':           colorNivel = const Color(0xFFB71C1C); break;
+      case 'moderado':       colorNivel = const Color(0xFFE65100); break;
+      case 'leve':           colorNivel = const Color(0xFFF57F17); break;
+      default:               colorNivel = const Color(0xFF2E7D32);
+    }
+
+    // Agrupar errores por categoría
+    final Map<String, int> erroresCat = {};
+    final Map<String, int> totalCat   = {};
+    for (final r in detalle) {
+      final cat = r['categoria'] as String? ?? '';
+      totalCat[cat]   = (totalCat[cat] ?? 0) + 1;
+      if (r['es_correcto'] == false) {
+        erroresCat[cat] = (erroresCat[cat] ?? 0) + 1;
+      }
+    }
+
+    const nombresCat = {
+      'reconocimiento':    '🔢 Reconocimiento de números',
+      'conteo':            '🖐️ Conteo',
+      'comparacion':       '⚖️ Comparación de cantidades',
+      'operaciones':       '➕ Operaciones básicas',
+      'secuencias':        '📊 Secuencias numéricas',
+      'relacion_cantidad': '🔗 Número-Cantidad',
+    };
+
+    String fechaFormat = '';
+    try {
+      final dt = DateTime.parse(fecha);
+      fechaFormat = '${dt.day}/${dt.month}/${dt.year}';
+    } catch (_) {}
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07),
+            blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Título ─────────────────────────────────────────
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Row(children: [
+              const Text('📋', style: TextStyle(fontSize: 22)),
+              const SizedBox(width: 8),
+              Text('Evaluación de Habilidades',
+                style: GoogleFonts.nunito(fontSize: 16,
+                    fontWeight: FontWeight.w800, color: const Color(0xFF1A237E))),
+            ]),
+            if (fechaFormat.isNotEmpty)
+              Text(fechaFormat,
+                style: GoogleFonts.nunito(fontSize: 12, color: Colors.grey)),
+          ]),
+          const SizedBox(height: 16),
+
+          // ── Resultado global ───────────────────────────────
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colorNivel.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: colorNivel.withOpacity(0.3)),
+            ),
+            child: Row(children: [
+              // Círculo de porcentaje
+              Container(
+                width: 70, height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: colorNivel,
+                ),
+                child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Text('${porcentaje.toStringAsFixed(0)}%',
+                    style: GoogleFonts.nunito(color: Colors.white,
+                        fontSize: 20, fontWeight: FontWeight.w900)),
+                  Text('$correctas/$total',
+                    style: GoogleFonts.nunito(color: Colors.white70, fontSize: 10)),
+                ]),
+              ),
+              const SizedBox(width: 16),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(etiqueta,
+                  style: GoogleFonts.nunito(fontSize: 15,
+                      fontWeight: FontWeight.w800, color: colorNivel)),
+                const SizedBox(height: 4),
+                Text('Criterio: Butterworth (85%+ sin indicadores)',
+                  style: GoogleFonts.nunito(fontSize: 11, color: Colors.grey.shade600)),
+              ])),
+            ]),
+          ),
+          const SizedBox(height: 16),
+
+          // ── Resultados por categoría ───────────────────────
+          Text('Detalle por área:',
+            style: GoogleFonts.nunito(fontSize: 14,
+                fontWeight: FontWeight.w800, color: const Color(0xFF1A237E))),
+          const SizedBox(height: 8),
+          ...totalCat.entries.map((e) {
+            final cat      = e.key;
+            final tot      = e.value;
+            final err      = erroresCat[cat] ?? 0;
+            final ok       = tot - err;
+            final pct      = tot > 0 ? ok / tot : 0.0;
+            final nombre   = nombresCat[cat] ?? cat;
+            final catColor = pct >= 0.7 ? const Color(0xFF2E7D32)
+                : pct >= 0.5 ? const Color(0xFFE65100)
+                : const Color(0xFFB71C1C);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Text(nombre,
+                    style: GoogleFonts.nunito(fontSize: 13,
+                        fontWeight: FontWeight.w700, color: const Color(0xFF1A237E))),
+                  Text('$ok/$tot correctas',
+                    style: GoogleFonts.nunito(fontSize: 12,
+                        fontWeight: FontWeight.w700, color: catColor)),
+                ]),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: pct,
+                    minHeight: 8,
+                    backgroundColor: Colors.grey.shade200,
+                    valueColor: AlwaysStoppedAnimation(catColor),
+                  ),
+                ),
+              ]),
+            );
+          }),
+        ],
+      ),
+    );
   }
 
   Widget _buildRecommendation(Map<String, dynamic> skills) {

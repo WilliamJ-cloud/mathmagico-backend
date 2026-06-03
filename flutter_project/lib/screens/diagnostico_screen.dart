@@ -14,6 +14,15 @@ class DiagnosticoScreen extends StatefulWidget {
   State<DiagnosticoScreen> createState() => _DiagnosticoScreenState();
 }
 
+// Respuestas correctas locales — fallback si el backend no las envía
+const Map<int, String> _correctasLocales = {
+  1: '7',         2: '9',              3: '3, 5, 8',
+  4: '6',         5: '7',              6: 'Grupo B (5)',
+  7: 'Grupo B (2)',8: '5',             9: '9',
+  10: '5',        11: '5',             12: '4',
+  13: '7',        14: 'B (4 objetos)', 15: '8',
+};
+
 class _DiagnosticoScreenState extends State<DiagnosticoScreen>
     with TickerProviderStateMixin {
 
@@ -132,10 +141,9 @@ class _DiagnosticoScreenState extends State<DiagnosticoScreen>
     if (mounted) {
       // Calcular resultado local si el backend falla
       final correctasLocal = _respuestas.where((r) {
-        final p = _preguntas.firstWhere(
-          (p) => p['id'].toString() == r['pregunta_id'].toString(),
-          orElse: () => <String, dynamic>{});
-        return p.isNotEmpty && p['correcta'].toString().trim() == r['respuesta'].toString().trim();
+        final id = r['pregunta_id'] as int? ?? 0;
+        final correcta = _correctasLocales[id] ?? '';
+        return correcta.trim() == r['respuesta'].toString().trim();
       }).length;
       final pctLocal = (_preguntas.isNotEmpty)
           ? correctasLocal / _preguntas.length * 100 : 0.0;
@@ -177,7 +185,9 @@ class _DiagnosticoScreenState extends State<DiagnosticoScreen>
   Widget _buildPregunta() {
     final pregunta  = _preguntas[_indice];
     final opciones  = List<String>.from(pregunta['opciones'] ?? []);
-    final correcta  = (pregunta['correcta'] ?? '') as String;
+    final id        = pregunta['id'] as int? ?? 0;
+    // Usar correcta local como fuente de verdad (no depende del backend)
+    final correcta  = _correctasLocales[id] ?? (pregunta['correcta'] ?? '') as String;
     final categoria = (pregunta['categoria'] ?? '') as String;
     final progreso  = (_indice + 1) / _preguntas.length;
 
