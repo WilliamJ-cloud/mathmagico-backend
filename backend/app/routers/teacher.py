@@ -367,9 +367,17 @@ async def get_dashboard(
 async def get_student_report_pdf(
     teacher_id: str,
     student_id: str,
+    token: str = None,
     db: AsyncSession = Depends(get_db),
-    current: dict = Depends(get_current_teacher),
 ):
+    # Verificar token desde query param (para descarga directa desde navegador)
+    from app.security import verify_token
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        verify_token(token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Token inválido")
     from fpdf import FPDF
 
     sr = await db.execute(

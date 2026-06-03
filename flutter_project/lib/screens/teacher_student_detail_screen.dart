@@ -225,8 +225,11 @@ class _TeacherStudentDetailScreenState
     final url = '${AppConstants.baseUrl}/teachers/${widget.teacherId}'
         '/students/${student['id']}/report-pdf';
 
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    // Abrir con token en la URL como query param para autenticación
+    final urlWithToken = '$url?token=${widget.token}';
+
+    if (await canLaunchUrl(Uri.parse(urlWithToken))) {
+      await launchUrl(Uri.parse(urlWithToken), mode: LaunchMode.externalApplication);
     }
   }
 
