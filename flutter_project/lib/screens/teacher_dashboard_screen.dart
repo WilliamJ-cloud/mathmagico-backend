@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -381,6 +382,22 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Copiar código del estudiante
+            IconButton(
+              icon: const Icon(Icons.copy, color: Color(0xFF7B1FA2), size: 20),
+              tooltip: 'Copiar código del estudiante',
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: student['id']));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(
+                    '📋 Código copiado: ${(student['id'] as String).substring(0, 8)}...',
+                    style: GoogleFonts.nunito()),
+                  backgroundColor: const Color(0xFF7B1FA2),
+                  duration: const Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ));
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.bar_chart, color: Color(0xFF1A237E)),
               onPressed: () => Navigator.push(

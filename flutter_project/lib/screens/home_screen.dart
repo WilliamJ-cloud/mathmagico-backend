@@ -882,7 +882,7 @@ Future<void> _changeUser() async {
               style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
             Text(
-              'Pide a tu profesor tu Código de Estudiante e ingrésalo aquí.',
+              'Pide a tu profesor el código que te asignó e ingrésalo aquí.',
               style: GoogleFonts.nunito(
                   fontSize: 13, color: AppColors.textSecondary),
             ),
@@ -921,33 +921,32 @@ Future<void> _changeUser() async {
                       if (code.isEmpty) return;
                       setS(() => isLoading = true);
 
-                      // Verificar que el código existe en el backend
+                      // Buscar el estudiante por ID en el backend
                       final data = await ApiService.get('/users/$code');
                       setS(() => isLoading = false);
 
                       if (data == null || data['error'] == true) {
                         if (ctx.mounted) {
-                          ScaffoldMessenger.of(ctx).showSnackBar(
-                            SnackBar(
-                              content: Text('Código no encontrado. Verifica con tu profesor.',
-                                  style: GoogleFonts.nunito()),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
+                          ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                            content: Text(
+                              'Código no encontrado. Pide al profesor el ID correcto.',
+                              style: GoogleFonts.nunito()),
+                            backgroundColor: Colors.red,
+                          ));
                         }
                         return;
                       }
 
-                      // Crear el modelo con el ID del profesor
+                      // Vincular: el estudiante ahora usa la cuenta del backend
                       final linked = UserModel.fromJson({
                         ...data,
                         'activityDates': currentUser?.activityDates ?? [],
-                        'skillLevels': data['skill_levels'] ?? currentUser?.skillLevels ?? {},
-                        'avatarEmoji': data['avatar_emoji'] ?? currentUser?.avatarEmoji ?? '🦁',
-                        'totalPoints': data['total_points'] ?? currentUser?.totalPoints ?? 0,
-                        'level': data['level'] ?? currentUser?.level ?? 1,
-                        'achievements': data['achievements'] ?? currentUser?.achievements ?? [],
-                        'createdAt': data['created_at'] ?? DateTime.now().toIso8601String(),
+                        'skillLevels':   data['skill_levels']  ?? {},
+                        'avatarEmoji':   data['avatar_emoji']  ?? '🦁',
+                        'totalPoints':   data['total_points']  ?? 0,
+                        'level':         data['level']         ?? 1,
+                        'achievements':  data['achievements']  ?? [],
+                        'createdAt':     data['created_at']    ?? DateTime.now().toIso8601String(),
                       });
 
                       await StorageService.instance.saveUser(linked);
