@@ -279,6 +279,26 @@ async def get_student_progress(
         for k, v in skill_stats.items()
     }
 
+    # Si no hay sesiones, mostrar skill_levels de la tabla normalizada
+    if not summary and student.skill_levels:
+        skill_map = {
+            "suma":      "suma_visual",
+            "resta":     "resta_visual",
+            "conteo":    "conteo",
+            "comparar":  "comparar",
+            "secuencias":"secuencias",
+            "reconocer": "reconocer_numeros",
+        }
+        for sl in student.skill_levels:
+            act_key = skill_map.get(sl.skill_name, sl.skill_name)
+            if sl.level > 0:
+                summary[act_key] = {
+                    "accuracy": float(sl.level),
+                    "sessions": 0,
+                    "total_questions": 0,
+                    "correct_answers": 0,
+                }
+
     # Unique activity dates (ISO "2026-04-04") from all sessions
     activity_dates = sorted(set(
         s.completed_at.strftime("%Y-%m-%d")
