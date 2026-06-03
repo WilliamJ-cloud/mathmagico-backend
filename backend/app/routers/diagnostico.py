@@ -14,27 +14,57 @@ from app.schemas import (
 
 router = APIRouter()
 
-
-def calcular_riesgo(total_dificultades: int) -> str:
-    """Criterio Butterworth: 4+ dificultades = riesgo."""
-    if total_dificultades >= 6:
-        return "alto"
-    elif total_dificultades >= 4:
+# ── Clasificación por porcentaje (Butterworth) ────────────────────────────────
+def calcular_nivel(porcentaje: float) -> str:
+    if porcentaje >= 85:
+        return "sin_indicadores"
+    elif porcentaje >= 70:
+        return "leve"
+    elif porcentaje >= 50:
         return "moderado"
-    return "sin_riesgo"
+    return "alto"
 
+def etiqueta_nivel(nivel: str) -> str:
+    return {
+        "sin_indicadores": "Sin indicadores significativos",
+        "leve":            "Dificultades leves",
+        "moderado":        "Dificultades moderadas",
+        "alto":            "Posibles indicadores de discalculia",
+    }.get(nivel, nivel)
 
-def mensaje_riesgo(nivel: str, nombre: str) -> str:
-    if nivel == "alto":
-        return f"¡{nombre} necesita apoyo especial! Presenta varias dificultades con los números. Te recomendamos empezar con las actividades de conteo."
+def mensaje_resultado(nivel: str, nombre: str, porcentaje: float, debilidades: List[str]) -> str:
+    areas = ", ".join(debilidades) if debilidades else "ninguna área"
+    base = f"{nombre} obtuvo un {porcentaje:.0f}% en el diagnóstico. "
+
+    if nivel == "sin_indicadores":
+        return (
+            base +
+            f"¡Excelente resultado! No se observan indicadores significativos de dificultad matemática. "
+            f"¡Sigue practicando para seguir mejorando! 🌟"
+        )
+    elif nivel == "leve":
+        return (
+            base +
+            f"Se observan dificultades leves en: {areas}. "
+            f"Se recomienda reforzar estas habilidades con las actividades de MathMágico. 💪"
+        )
     elif nivel == "moderado":
-        return f"¡{nombre} está aprendiendo! Tiene algunas dificultades que podemos trabajar juntos. ¡Tú puedes!"
-    return f"¡{nombre} va muy bien con los números! Sigue practicando para ser un campeón de las matemáticas. 🌟"
+        return (
+            base +
+            f"El resultado evidencia dificultades moderadas en: {areas}. "
+            f"Se recomienda reforzar estas habilidades mediante actividades educativas y consultar con el docente. 📚"
+        )
+    return (
+        base +
+        f"El resultado evidencia dificultades en: {areas}. "
+        f"Se recomienda reforzar estas habilidades mediante actividades educativas y, de ser necesario, "
+        f"consultar con un especialista en aprendizaje. 🩺"
+    )
 
 
 @router.get("/preguntas", response_model=List[DiagnosticoPreguntaResponse])
 async def get_preguntas():
-    """Retorna las 8 preguntas del diagnóstico Butterworth."""
+    """Retorna las 15 preguntas del diagnóstico."""
     return [DiagnosticoPreguntaResponse(**p) for p in DIAGNOSTICO_PREGUNTAS]
 
 
@@ -43,62 +73,76 @@ async def submit_diagnostico(
     data: DiagnosticoSubmitRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Guarda las respuestas y calcula el nivel de riesgo según Butterworth."""
-
-    # Verificar usuario
     result = await db.execute(select(User).where(User.id == data.user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    # Calcular dificultades (respuesta False = No = dificultad)
-    # Pregunta 5 es inversa: responder Sí = confunde números = dificultad
-    dificultades = 0
+    # Evaluar respuestas
+    total = len(DIAGNOSTICO_PREGUNTAS)
+    correctas = 0
+    errores_por_categoria: dict = {}
+
     for r in data.respuestas:
         pregunta = next((p for p in DIAGNOSTICO_PREGUNTAS if p["id"] == r.pregunta_id), None)
-        if pregunta:
-            if pregunta["indicador"] == "confusion_numeros":
-                # Sí = confunde = dificultad
-                if r.respuesta is True:
-                    dificultades += 1
-            else:
-                # No = no puede = dificultad
-                if r.respuesta is False:
-                    dificultades += 1
+        if not pregunta:
+            continue
+        es_correcta = r.respuesta == pregunta["correcta"]
+        if es_correcta:
+            correctas += 1
+        else:
+            cat = pregunta["categoria"]
+            errores_por_categoria[cat] = errores_por_categoria.get(cat, 0) + 1
 
-    nivel = calcular_riesgo(dificultades)
+    porcentaje = (correctas / total * 100) if total > 0 else 0
+    nivel = calcular_nivel(porcentaje)
 
-    # Guardar diagnóstico
+    # Categorías con más errores (debilidades)
+    NOMBRES_CAT = {
+        "reconocimiento": "Reconocimiento de números",
+        "conteo":         "Conteo",
+        "comparacion":    "Comparación de cantidades",
+        "operaciones":    "Operaciones básicas",
+        "secuencias":     "Secuencias numéricas",
+        "relacion_cantidad": "Relación número-cantidad",
+    }
+    debilidades = [NOMBRES_CAT.get(c, c) for c, e in errores_por_categoria.items() if e >= 1]
+
+    # Guardar en BD
     diag = Diagnostico(
         id=str(uuid.uuid4()),
         user_id=data.user_id,
-        total_dificultades=dificultades,
+        total_dificultades=total - correctas,
         nivel_riesgo=nivel,
     )
     for r in data.respuestas:
         pregunta = next((p for p in DIAGNOSTICO_PREGUNTAS if p["id"] == r.pregunta_id), None)
+        if not pregunta:
+            continue
         diag.respuestas.append(DiagnosticoRespuesta(
             id=str(uuid.uuid4()),
             pregunta_id=r.pregunta_id,
-            indicador=pregunta["indicador"] if pregunta else "",
-            respuesta=r.respuesta,
+            indicador=pregunta["indicador"],
+            respuesta=(r.respuesta == pregunta["correcta"]),  # True=correcto
         ))
-
     db.add(diag)
     await db.commit()
 
     return DiagnosticoResultadoResponse(
         diagnostico_id=diag.id,
-        total_dificultades=dificultades,
+        porcentaje=round(porcentaje, 1),
+        correctas=correctas,
+        total=total,
         nivel_riesgo=nivel,
-        mensaje=mensaje_riesgo(nivel, user.name),
-        actividades_recomendadas=_actividades_recomendadas(nivel),
+        etiqueta_nivel=etiqueta_nivel(nivel),
+        debilidades=debilidades,
+        mensaje=mensaje_resultado(nivel, user.name, porcentaje, debilidades),
+        actividades_recomendadas=_actividades_recomendadas(errores_por_categoria),
     )
 
 
 @router.get("/resultado/{user_id}", response_model=DiagnosticoResultadoResponse)
 async def get_ultimo_resultado(user_id: str, db: AsyncSession = Depends(get_db)):
-    """Obtiene el último diagnóstico del estudiante."""
     result = await db.execute(
         select(Diagnostico)
         .where(Diagnostico.user_id == user_id)
@@ -111,19 +155,26 @@ async def get_ultimo_resultado(user_id: str, db: AsyncSession = Depends(get_db))
 
     user_r = await db.execute(select(User).where(User.id == user_id))
     user = user_r.scalar_one_or_none()
+    total = len(DIAGNOSTICO_PREGUNTAS)
+    correctas = total - diag.total_dificultades
+    porcentaje = correctas / total * 100 if total > 0 else 0
 
     return DiagnosticoResultadoResponse(
         diagnostico_id=diag.id,
-        total_dificultades=diag.total_dificultades,
+        porcentaje=round(porcentaje, 1),
+        correctas=correctas,
+        total=total,
         nivel_riesgo=diag.nivel_riesgo,
-        mensaje=mensaje_riesgo(diag.nivel_riesgo, user.name if user else ""),
-        actividades_recomendadas=_actividades_recomendadas(diag.nivel_riesgo),
+        etiqueta_nivel=etiqueta_nivel(diag.nivel_riesgo),
+        debilidades=[],
+        mensaje=mensaje_resultado(diag.nivel_riesgo, user.name if user else "", porcentaje, []),
+        actividades_recomendadas=_actividades_recomendadas({}),
     )
 
 
 @router.get("/profesor/{user_id}")
 async def get_diagnostico_profesor(user_id: str, db: AsyncSession = Depends(get_db)):
-    """Vista detallada para el profesor con todas las respuestas."""
+    """Vista detallada para el profesor."""
     result = await db.execute(
         select(Diagnostico)
         .where(Diagnostico.user_id == user_id)
@@ -134,39 +185,51 @@ async def get_diagnostico_profesor(user_id: str, db: AsyncSession = Depends(get_
     if not diag:
         raise HTTPException(status_code=404, detail="Sin diagnóstico")
 
-    # Cargar respuestas
     resp_result = await db.execute(
         select(DiagnosticoRespuesta).where(DiagnosticoRespuesta.diagnostico_id == diag.id)
     )
     respuestas = resp_result.scalars().all()
+    total = len(DIAGNOSTICO_PREGUNTAS)
+    correctas = sum(1 for r in respuestas if r.respuesta)
+    porcentaje = correctas / total * 100 if total > 0 else 0
 
     detalle = []
     for r in respuestas:
         pregunta = next((p for p in DIAGNOSTICO_PREGUNTAS if p["id"] == r.pregunta_id), {})
         detalle.append({
-            "pregunta_id": r.pregunta_id,
-            "indicador": r.indicador,
-            "texto": pregunta.get("texto", ""),
-            "respuesta": "Sí" if r.respuesta else "No",
-            "es_dificultad": (
-                r.respuesta is True if r.indicador == "confusion_numeros"
-                else r.respuesta is False
-            ),
+            "pregunta_id":  r.pregunta_id,
+            "categoria":    pregunta.get("categoria", ""),
+            "texto":        pregunta.get("texto", ""),
+            "correcta":     pregunta.get("correcta", ""),
+            "es_correcto":  r.respuesta,
         })
 
     return {
-        "diagnostico_id": diag.id,
-        "fecha": diag.created_at.isoformat(),
-        "nivel_riesgo": diag.nivel_riesgo,
-        "total_dificultades": diag.total_dificultades,
-        "criterio": "Butterworth: 4+ dificultades = riesgo de discalculia",
-        "detalle": detalle,
+        "diagnostico_id":    diag.id,
+        "fecha":             diag.created_at.isoformat(),
+        "porcentaje":        round(porcentaje, 1),
+        "correctas":         correctas,
+        "total":             total,
+        "nivel_riesgo":      diag.nivel_riesgo,
+        "etiqueta_nivel":    etiqueta_nivel(diag.nivel_riesgo),
+        "criterio":          "Butterworth: 85%+ sin indicadores | 70-84% leve | 50-69% moderado | <50% alto",
+        "detalle":           detalle,
     }
 
 
-def _actividades_recomendadas(nivel: str) -> List[str]:
-    if nivel == "alto":
-        return ["conteo", "reconocer_numeros", "comparar"]
-    elif nivel == "moderado":
-        return ["conteo", "suma_visual"]
-    return ["suma_visual", "secuencias", "resta_visual"]
+def _actividades_recomendadas(errores: dict) -> List[str]:
+    recomendadas = []
+    if errores.get("reconocimiento", 0) >= 1:
+        recomendadas.append("reconocer_numeros")
+    if errores.get("conteo", 0) >= 1:
+        recomendadas.append("conteo")
+    if errores.get("comparacion", 0) >= 1:
+        recomendadas.append("comparar")
+    if errores.get("operaciones", 0) >= 1:
+        recomendadas.append("suma_visual")
+        recomendadas.append("resta_visual")
+    if errores.get("secuencias", 0) >= 1:
+        recomendadas.append("secuencias")
+    if not recomendadas:
+        recomendadas = ["suma_visual", "secuencias", "comparar"]
+    return list(dict.fromkeys(recomendadas))[:4]

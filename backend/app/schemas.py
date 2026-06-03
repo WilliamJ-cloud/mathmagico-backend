@@ -132,15 +132,17 @@ class AnalysisResponse(BaseModel):
 
 class DiagnosticoPreguntaResponse(BaseModel):
     id: int
+    categoria: str
     texto: str
     emoji: str
     audio: str
+    opciones: List[str]
     indicador: str
 
 
 class DiagnosticoRespuestaItem(BaseModel):
     pregunta_id: int
-    respuesta: bool  # True = Sí, False = No
+    respuesta: str  # la opción que eligió el niño
 
 
 class DiagnosticoSubmitRequest(BaseModel):
@@ -150,7 +152,11 @@ class DiagnosticoSubmitRequest(BaseModel):
 
 class DiagnosticoResultadoResponse(BaseModel):
     diagnostico_id: str
-    total_dificultades: int
-    nivel_riesgo: str          # sin_riesgo / moderado / alto
+    porcentaje: float
+    correctas: int
+    total: int
+    nivel_riesgo: str
+    etiqueta_nivel: str
+    debilidades: List[str]
     mensaje: str
     actividades_recomendadas: List[str]
