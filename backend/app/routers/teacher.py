@@ -523,6 +523,98 @@ async def get_student_report_pdf(
             pdf.set_text_color(0, 0, 0)
             pdf.ln()
 
+    # Evaluación de habilidades matemáticas (Butterworth)
+    from app.models import Diagnostico, DiagnosticoRespuesta, DIAGNOSTICO_PREGUNTAS
+    diag_r = await db.execute(
+        select(Diagnostico)
+        .where(Diagnostico.user_id == student_id)
+        .order_by(Diagnostico.created_at.desc())
+        .limit(1)
+    )
+    diag = diag_r.scalar_one_or_none()
+
+    if diag:
+        resp_r = await db.execute(
+            select(DiagnosticoRespuesta)
+            .where(DiagnosticoRespuesta.diagnostico_id == diag.id)
+        )
+        respuestas = resp_r.scalars().all()
+        total_pregs = len(DIAGNOSTICO_PREGUNTAS)
+        correctas_eval = sum(1 for r in respuestas if r.respuesta)
+        porcentaje_eval = (correctas_eval / total_pregs * 100) if total_pregs > 0 else 0
+
+        nivel_labels = {
+            "sin_indicadores": "Sin indicadores significativos",
+            "leve":            "Dificultades leves",
+            "moderado":        "Dificultades moderadas",
+            "alto":            "Posibles indicadores de discalculia",
+        }
+        nivel_label = nivel_labels.get(diag.nivel_riesgo, diag.nivel_riesgo)
+
+        seccion("EVALUACION DE HABILIDADES MATEMATICAS")
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.cell(65, 7, "Fecha de evaluacion:")
+        pdf.set_font("Helvetica", "", 10)
+        pdf.cell(0, 7, diag.created_at.strftime("%d/%m/%Y") if diag.created_at else "-", ln=True)
+
+        pdf.cell(65, 7, "Resultado:")
+        color_eval = (
+            (0, 120, 0) if diag.nivel_riesgo == "sin_indicadores"
+            else (180, 90, 0) if diag.nivel_riesgo == "leve"
+            else (200, 100, 0) if diag.nivel_riesgo == "moderado"
+            else (200, 0, 0)
+        )
+        pdf.set_text_color(*color_eval)
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.cell(0, 7, f"{porcentaje_eval:.0f}% - {nivel_label}", ln=True)
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_font("Helvetica", "", 10)
+        pdf.cell(65, 7, "Respuestas correctas:")
+        pdf.cell(0, 7, f"{correctas_eval} de {total_pregs}", ln=True)
+        pdf.cell(0, 6, "Criterio: Butterworth (85%+ sin indicadores | 70-84% leve | 50-69% moderado | <50% alto)", ln=True)
+        pdf.ln(2)
+
+        # Detalle por categoría
+        categorias = {}
+        for r in respuestas:
+            p = next((x for x in DIAGNOSTICO_PREGUNTAS if x["id"] == r.pregunta_id), None)
+            if p:
+                cat = p["categoria"]
+                if cat not in categorias:
+                    categorias[cat] = {"total": 0, "correctas": 0}
+                categorias[cat]["total"] += 1
+                if r.respuesta:
+                    categorias[cat]["correctas"] += 1
+
+        nombres_cat = {
+            "reconocimiento":    "Reconocimiento de numeros",
+            "conteo":            "Conteo",
+            "comparacion":       "Comparacion de cantidades",
+            "operaciones":       "Operaciones basicas",
+            "secuencias":        "Secuencias numericas",
+            "relacion_cantidad": "Relacion numero-cantidad",
+        }
+
+        pdf.set_fill_color(220, 230, 245)
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.cell(90, 6, "Area evaluada", border=1, fill=True)
+        pdf.cell(30, 6, "Correctas", border=1, fill=True, align="C")
+        pdf.cell(30, 6, "Precision", border=1, fill=True, align="C")
+        pdf.cell(30, 6, "Nivel", border=1, fill=True, align="C")
+        pdf.ln()
+        pdf.set_font("Helvetica", "", 9)
+        for cat, data in categorias.items():
+            pct = data["correctas"] / data["total"] * 100 if data["total"] > 0 else 0
+            nivel_c = "Logrado" if pct >= 70 else "En proceso" if pct >= 50 else "Reforzar"
+            clr = (0, 120, 0) if pct >= 70 else (180, 90, 0) if pct >= 50 else (180, 0, 0)
+            pdf.cell(90, 6, nombres_cat.get(cat, cat), border=1)
+            pdf.cell(30, 6, f"{data['correctas']}/{data['total']}", border=1, align="C")
+            pdf.set_text_color(*clr)
+            pdf.cell(30, 6, f"{pct:.0f}%", border=1, align="C")
+            pdf.cell(30, 6, nivel_c, border=1, align="C")
+            pdf.set_text_color(0, 0, 0)
+            pdf.ln()
+
     # Recomendación
     seccion("RECOMENDACIÓN PEDAGÓGICA")
     pdf.set_font("Helvetica", "", 10)
