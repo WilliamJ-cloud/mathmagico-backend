@@ -149,8 +149,8 @@ class _DiagnosticoScreenState extends State<DiagnosticoScreen>
   Widget _buildPregunta() {
     final pregunta  = _preguntas[_indice];
     final opciones  = List<String>.from(pregunta['opciones'] ?? []);
-    final correcta  = pregunta['correcta'] as String;
-    final categoria = pregunta['categoria'] as String? ?? '';
+    final correcta  = (pregunta['correcta'] ?? '') as String;
+    final categoria = (pregunta['categoria'] ?? '') as String;
     final progreso  = (_indice + 1) / _preguntas.length;
 
     return Scaffold(
@@ -589,7 +589,7 @@ class _DiagnosticoScreenState extends State<DiagnosticoScreen>
       children: [
         const Text('🦉', style: TextStyle(fontSize: 64)),
         const SizedBox(height: 20),
-        Text('Preparando tu diagnóstico...',
+        Text('Preparando tu evaluación...',
           style: GoogleFonts.nunito(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
         const SizedBox(height: 20),
         const CircularProgressIndicator(color: Colors.white),
@@ -604,7 +604,7 @@ class _DiagnosticoScreenState extends State<DiagnosticoScreen>
       children: [
         const Text('🦉', style: TextStyle(fontSize: 64)),
         const SizedBox(height: 20),
-        Text('Calculando tu resultado...',
+        Text('Calculando tus resultados...',
           style: GoogleFonts.nunito(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
         const SizedBox(height: 20),
         const CircularProgressIndicator(color: Color(0xFFFFD700)),

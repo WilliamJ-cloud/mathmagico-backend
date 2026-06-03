@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import '../services/server_config.dart';
+import '../services/storage_service.dart';
 import 'teacher_dashboard_screen.dart';
 import 'welcome_screen.dart';
 
@@ -33,9 +34,17 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
     super.dispose();
   }
 
+  // ── Validación de contraseña segura ───────────────────
+  String? _validatePassword(String pass) {
+    if (!pass.contains(RegExp(r'[A-Z]'))) return 'La contraseña debe tener al menos una letra mayúscula (A-Z).';
+    if (!pass.contains(RegExp(r'[a-z]'))) return 'La contraseña debe tener al menos una letra minúscula (a-z).';
+    if (!pass.contains(RegExp(r'[0-9]'))) return 'La contraseña debe tener al menos un número (0-9).';
+    return null;
+  }
+
   // ── Registro ──────────────────────────────────────────
   Future<void> _register() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() { _loading = true; _error = '⏳ Conectando con el servidor...\nSi es la primera conexión puede tardar hasta 1 minuto.'; });
 
     // Validar campos obligatorios
     final name   = _nameCtrl.text.trim();
@@ -48,6 +57,12 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
         _error = 'Por favor completa todos los campos obligatorios';
         _loading = false;
       });
+      return;
+    }
+
+    final passError = _validatePassword(pass);
+    if (passError != null) {
+      setState(() { _error = passError; _loading = false; });
       return;
     }
 
@@ -67,7 +82,7 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
       if (response != null && response['teacher'] != null) {
         final teacher = Map<String, dynamic>.from(response['teacher']);
         final token   = response['token']?.toString() ?? '';
-        _goToDashboard(teacher, token);
+        await _goToDashboard(teacher, token);
       } else {
         setState(() {
           _error = response?['detail']?.toString()
@@ -83,7 +98,7 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
 
   // ── Login ─────────────────────────────────────────────
   Future<void> _login() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() { _loading = true; _error = '⏳ Conectando con el servidor...\nSi es la primera conexión puede tardar hasta 1 minuto.'; });
 
     final email = _emailCtrl.text.trim();
     final pass  = _passCtrl.text.trim();
@@ -110,7 +125,7 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
       if (response != null && response['teacher'] != null) {
         final teacher = Map<String, dynamic>.from(response['teacher']);
         final token   = response['token']?.toString() ?? '';
-        _goToDashboard(teacher, token);
+        await _goToDashboard(teacher, token);
       } else {
         setState(() {
           _error = response?['detail']?.toString()
@@ -183,7 +198,13 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
     );
   }
 
-  void _goToDashboard(Map<String, dynamic> teacher, String token) {
+  Future<void> _goToDashboard(Map<String, dynamic> teacher, String token) async {
+    // Persiste el token para restaurar la sesion si la app se reinicia
+    await StorageService.instance.saveTeacherSession(
+      token: token,
+      teacher: teacher,
+    );
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => TeacherDashboardScreen(
@@ -318,6 +339,30 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
                         ),
                       ),
                     ),
+
+                    // Indicadores de requisitos de contraseña (solo en registro)
+                    if (!_isLogin) ...[
+                      const SizedBox(height: 10),
+                      ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _passCtrl,
+                        builder: (_, value, __) {
+                          final p = value.text;
+                          final hasMay = p.contains(RegExp(r'[A-Z]'));
+                          final hasMin = p.contains(RegExp(r'[a-z]'));
+                          final hasNum = p.contains(RegExp(r'[0-9]'));
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              _reqChip('A-Z', hasMay),
+                              const SizedBox(width: 8),
+                              _reqChip('a-z', hasMin),
+                              const SizedBox(width: 8),
+                              _reqChip('0-9', hasNum),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
                     const SizedBox(height: 20),
 
                     // Error
@@ -450,6 +495,28 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _reqChip(String label, bool met) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          met ? Icons.check_circle : Icons.radio_button_unchecked,
+          size: 14,
+          color: met ? Colors.green.shade600 : Colors.grey.shade400,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: GoogleFonts.nunito(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: met ? Colors.green.shade600 : Colors.grey.shade500,
+          ),
+        ),
+      ],
     );
   }
 

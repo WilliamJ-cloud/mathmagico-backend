@@ -48,6 +48,39 @@ class StorageService {
     return prefs.getString("current_user_id");
   }
 
+  // ── JWT del profesor ──────────────────────────────────────
+
+  /// Guarda el JWT y los datos del profesor tras el login.
+  Future<void> saveTeacherSession({
+    required String token,
+    required Map<String, dynamic> teacher,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString("teacher_token", token);
+    await prefs.setString("teacher_data", jsonEncode(teacher));
+  }
+
+  /// Devuelve el JWT del profesor o null si no hay sesion activa.
+  Future<String?> getTeacherToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString("teacher_token");
+  }
+
+  /// Devuelve los datos del profesor guardados o null.
+  Future<Map<String, dynamic>?> getTeacherData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString("teacher_data");
+    if (raw == null) return null;
+    return Map<String, dynamic>.from(jsonDecode(raw));
+  }
+
+  /// Elimina la sesion del profesor (logout).
+  Future<void> clearTeacherSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove("teacher_token");
+    await prefs.remove("teacher_data");
+  }
+
   Future<void> savePreference(String key, dynamic value) async {
     final prefs = await SharedPreferences.getInstance();
     if (value is bool) await prefs.setBool(key, value);

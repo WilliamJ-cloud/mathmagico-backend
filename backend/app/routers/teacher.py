@@ -2,37 +2,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from jose import jwt
 from datetime import datetime, timedelta
-import hashlib
 import uuid
 import io
 
 from app.database import get_db
 from app.models import Teacher, User, Session
-from app.config import settings
+from app.security import hash_password, verify_password, create_token
+from app.deps import get_current_teacher
 
 router = APIRouter()
-
-
-# ── Utilidades auth ───────────────────────────────────────
-def _hash(password: str) -> str:
-    return hashlib.sha256(password.encode("utf-8")).hexdigest()
-
-
-def _verify(plain: str, hashed: str) -> bool:
-    return _hash(plain) == hashed
-
-
-def _token(teacher_id: str) -> str:
-    expire = datetime.utcnow() + timedelta(
-        minutes=settings.jwt_expire_minutes
-    )
-    return jwt.encode(
-        {"sub": teacher_id, "exp": expire, "role": "teacher"},
-        settings.secret_key,
-        algorithm=settings.jwt_algorithm,
-    )
 
 
 # ── Registro ──────────────────────────────────────────────
@@ -59,7 +38,7 @@ async def register_teacher(
         id=str(uuid.uuid4()),
         name=str(data.get("name") or "Profesor"),
         email=str(data["email"]),
-        password_hash=_hash(str(data["password"])),
+        password_hash=hash_password(str(data["password"])),
         school=str(data.get("school") or ""),
     )
     db.add(teacher)
@@ -68,7 +47,7 @@ async def register_teacher(
 
     return {
         "teacher": teacher.to_dict(),
-        "token": _token(teacher.id),
+        "token": create_token(teacher.id),
     }
 
 
@@ -88,7 +67,7 @@ async def login_teacher(
     )
     teacher = result.scalar_one_or_none()
 
-    if not teacher or not _verify(
+    if not teacher or not verify_password(
         str(data["password"]), teacher.password_hash
     ):
         raise HTTPException(
@@ -98,14 +77,16 @@ async def login_teacher(
 
     return {
         "teacher": teacher.to_dict(),
-        "token": _token(teacher.id),
+        "token": create_token(teacher.id),
     }
 
 
 # ── Listar estudiantes ────────────────────────────────────
 @router.get("/{teacher_id}/students")
 async def get_students(
-    teacher_id: str, db: AsyncSession = Depends(get_db)
+    teacher_id: str,
+    db: AsyncSession = Depends(get_db),
+    current: dict = Depends(get_current_teacher),
 ):
     result = await db.execute(
         select(User)
@@ -155,6 +136,7 @@ async def add_student(
     teacher_id: str,
     data: dict,
     db: AsyncSession = Depends(get_db),
+    current: dict = Depends(get_current_teacher),
 ):
     student = User(
         id=str(uuid.uuid4()),
@@ -193,6 +175,7 @@ async def update_student(
     student_id: str,
     data: dict,
     db: AsyncSession = Depends(get_db),
+    current: dict = Depends(get_current_teacher),
 ):
     result = await db.execute(
         select(User).where(
@@ -228,6 +211,7 @@ async def delete_student(
     teacher_id: str,
     student_id: str,
     db: AsyncSession = Depends(get_db),
+    current: dict = Depends(get_current_teacher),
 ):
     result = await db.execute(
         select(User).where(
@@ -251,6 +235,7 @@ async def get_student_progress(
     teacher_id: str,
     student_id: str,
     db: AsyncSession = Depends(get_db),
+    current: dict = Depends(get_current_teacher),
 ):
     sr = await db.execute(
         select(User).where(User.id == student_id)
@@ -328,7 +313,9 @@ async def get_student_progress(
 # ── Dashboard del profesor ────────────────────────────────
 @router.get("/{teacher_id}/dashboard")
 async def get_dashboard(
-    teacher_id: str, db: AsyncSession = Depends(get_db)
+    teacher_id: str,
+    db: AsyncSession = Depends(get_db),
+    current: dict = Depends(get_current_teacher),
 ):
     cnt_r = await db.execute(
         select(func.count(User.id)).where(
@@ -376,6 +363,7 @@ async def get_student_report_pdf(
     teacher_id: str,
     student_id: str,
     db: AsyncSession = Depends(get_db),
+    current: dict = Depends(get_current_teacher),
 ):
     from fpdf import FPDF
 

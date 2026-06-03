@@ -16,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'parent_report_screen.dart';
 import 'welcome_screen.dart';
+import 'diagnostico_screen.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 
@@ -566,6 +567,26 @@ class _HomeScreenState extends State<HomeScreen> {
               letterSpacing: 0.8,
             ),
           ),
+          const SizedBox(height: 10),
+
+          // ── Diagnóstico Butterworth ──────────────────────
+          _settingsCard(
+            icon: Icons.psychology_rounded,
+            iconColor: const Color(0xFFE53935),
+            bgColor: const Color(0xFFFFEBEE),
+            title: 'Evaluación de Habilidades',
+            subtitle: 'Responde 15 preguntas para conocer cómo aprendes matemáticas',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => DiagnosticoScreen(
+                  userId: user?.id ?? '',
+                  userName: user?.name ?? '',
+                ),
+              ),
+            ),
+          ).animate().fadeIn(delay: 80.ms).slideX(begin: -0.1),
+
           const SizedBox(height: 10),
 
           // ── Reporte para padres ──────────────────────────

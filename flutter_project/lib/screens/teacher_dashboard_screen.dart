@@ -222,20 +222,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
                             color: const Color(0xFF1A237E),
                           ),
                         ),
-                        ElevatedButton.icon(
-                          onPressed: _addStudent,
-                          icon: const Icon(Icons.add, size: 18),
-                          label: Text('Agregar',
-                              style: GoogleFonts.nunito(
-                                  fontWeight: FontWeight.w700)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1A237E),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                     const SizedBox(height: 12),

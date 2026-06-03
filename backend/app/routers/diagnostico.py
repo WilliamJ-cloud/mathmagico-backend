@@ -34,31 +34,34 @@ def etiqueta_nivel(nivel: str) -> str:
 
 def mensaje_resultado(nivel: str, nombre: str, porcentaje: float, debilidades: List[str]) -> str:
     areas = ", ".join(debilidades) if debilidades else "ninguna área"
-    base = f"{nombre} obtuvo un {porcentaje:.0f}% en el diagnóstico. "
+    base = f"{nombre} obtuvo un {porcentaje:.0f}% en la evaluación. "
 
     if nivel == "sin_indicadores":
         return (
             base +
-            f"¡Excelente resultado! No se observan indicadores significativos de dificultad matemática. "
-            f"¡Sigue practicando para seguir mejorando! 🌟"
+            "¡Muy buen desempeño! Demostró dominio en las habilidades evaluadas. "
+            "¡Sigue practicando con MathMágico para seguir mejorando! 🌟"
         )
     elif nivel == "leve":
         return (
             base +
-            f"Se observan dificultades leves en: {areas}. "
-            f"Se recomienda reforzar estas habilidades con las actividades de MathMágico. 💪"
+            f"Se identificaron algunas áreas a reforzar: {areas}. "
+            f"Se recomienda practicar con las actividades sugeridas. 💪 "
+            f"Nota: Esta evaluación es referencial. Consulta al docente para orientación adicional."
         )
     elif nivel == "moderado":
         return (
             base +
-            f"El resultado evidencia dificultades moderadas en: {areas}. "
-            f"Se recomienda reforzar estas habilidades mediante actividades educativas y consultar con el docente. 📚"
+            f"Se identificaron áreas que necesitan refuerzo: {areas}. "
+            f"Se sugiere trabajar con las actividades recomendadas y comunicar los resultados al docente. 📚 "
+            f"Nota: Esta evaluación es orientativa y no reemplaza la valoración de un especialista."
         )
     return (
         base +
-        f"El resultado evidencia dificultades en: {areas}. "
-        f"Se recomienda reforzar estas habilidades mediante actividades educativas y, de ser necesario, "
-        f"consultar con un especialista en aprendizaje. 🩺"
+        f"Se identificaron varias áreas de dificultad: {areas}. "
+        f"Se sugiere informar estos resultados al docente o especialista para una valoración profesional. "
+        f"¡MathMágico te ayudará a practicar y mejorar! 💙 "
+        f"Nota: Esta evaluación es orientativa y no constituye un diagnóstico clínico."
     )
 
 

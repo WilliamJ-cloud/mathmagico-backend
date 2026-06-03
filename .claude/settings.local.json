@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pandoc \"C:\\\\Users\\\\Desktop\\\\Desktop\\\\TALLER FINAL 2026\\\\TALLER DE GRADO II JUAN WILLIAM QUISPE QUISPE.docx\" -o C:\\\\Users\\\\Desktop\\\\taller_content.md)",
+      "Read(//c/Users/Desktop/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/4a6e747f-8b72-4d72-b379-e8822da00c6d/828f6a1e-76c7-4d87-b82c-d6e0d94f1142/skills/docx/**)",
+      "Bash(python scripts/office/unpack.py \"C:\\\\Users\\\\Desktop\\\\Desktop\\\\TALLER FINAL 2026\\\\TALLER DE GRADO II JUAN WILLIAM QUISPE QUISPE.docx\" \"C:\\\\Users\\\\Desktop\\\\taller_unpacked\")",
+      "Bash(python3 -c ' *)",
+      "Bash(python -c ' *)",
+      "Bash(python \"C:\\\\Users\\\\Desktop\\\\generar_diagrama_fases.py\")",
+      "Bash(pip install *)",
+      "Bash(node -e \"require\\('docx'\\); console.log\\('ok'\\)\")",
+      "Bash(sed -i \"s|require\\('/c/Users/Desktop/node_modules/docx'\\)|require\\('docx'\\)|\" /c/Users/Desktop/diagrama_word.js)",
+      "Bash(node /c/Users/Desktop/diagrama_word.js)",
+      "Bash(python /c/Users/Desktop/diagrama_ciclo.py)",
+      "Bash(python /c/Users/Desktop/diagrama_arquitectura.py)",
+      "Bash(python /c/Users/Desktop/diagrama_er.py)",
+      "Bash(pandoc \"C:\\\\Users\\\\Desktop\\\\Desktop\\\\TALLER FINAL 2026\\\\TALLER DE GRADO II JUAN WILLIAM QUISPE QUISPE.docx\" -t plain -o C:\\\\Users\\\\Desktop\\\\taller_full.txt)",
+      "Bash(python C:/Users/Desktop/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/4a6e747f-8b72-4d72-b379-e8822da00c6d/828f6a1e-76c7-4d87-b82c-d6e0d94f1142/skills/docx/scripts/office/unpack.py '/c/Users/Desktop/Desktop/TALLER FINAL 2026/TALLER DE GRADO II JUAN WILLIAM QUISPE QUISPE.docx' /c/Users/Desktop/taller_unpacked/)",
+      "Bash(python.exe -c ' *)",
+      "Bash(node capitulo5.js)",
+      "Bash(python diagramas_uml.py)",
+      "Bash(npm list *)",
+      "Bash(node insertar_diagramas.js)",
+      "Bash(python \"C:/Users/Desktop/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/4a6e747f-8b72-4d72-b379-e8822da00c6d/828f6a1e-76c7-4d87-b82c-d6e0d94f1142/skills/docx/scripts/office/validate.py\" \"Diagramas_Capitulo_V_MathMagico.docx\")",
+      "Bash(python /c/Users/Desktop/diagramas_grandes.py)",
+      "Bash(node /c/Users/Desktop/insertar_diagramas2.js)",
+      "Bash(python diagramas_v3.py)",
+      "Bash(node word_final.js)",
+      "Bash(node -e ' *)"
+    ]
+  }
+}

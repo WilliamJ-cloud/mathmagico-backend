@@ -1,12 +1,16 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'audio_js_stub.dart'
     if (dart.library.js) 'audio_js_web.dart' as audio_js;
 
 class AudioService {
-  // flutter_tts used only on non-web platforms
   FlutterTts? _tts;
   bool _ttsReady = false;
+  bool _isSpeaking = false;
+
+  // Locales preferidos en orden — Android suele tener mejores voces en es-US
+  static const _localePrefs = ['es-US', 'es-MX', 'es-ES', 'es'];
 
   AudioService() {
     _init();
@@ -14,74 +18,112 @@ class AudioService {
 
   Future<void> _init() async {
     if (kIsWeb) {
-      // On web everything goes through window.mathMagicoAudio (JS)
-      // Voice is already being loaded via initVoice() in index.html
       _ttsReady = true;
       return;
     }
 
-    // Mobile / desktop — use flutter_tts
     _tts = FlutterTts();
     try {
-      await _tts!.setLanguage('es-ES');
-      await _tts!.setSpeechRate(0.22); // Muy lento y cálido para niños
-      await _tts!.setVolume(1.0);
-      await _tts!.setPitch(1.05);      // Tono ligeramente cálido
+      // Que no bloquee el hilo esperando que termine cada frase
+      await _tts!.awaitSpeakCompletion(false);
 
       final voices = await _tts!.getVoices;
-      if (voices is List) {
-        // Prefer female Spanish voice
-        final pick = voices.firstWhere(
-          (v) =>
-              v is Map &&
-              v['locale']?.toString().startsWith('es') == true &&
-              v['name']?.toString().toLowerCase().contains('female') == true,
-          orElse: () => voices.firstWhere(
-            (v) =>
-                v is Map && v['locale']?.toString().startsWith('es') == true,
-            orElse: () => null,
-          ),
-        );
-        if (pick != null && pick is Map) {
-          await _tts!.setVoice({
-            'name': pick['name'].toString(),
-            'locale': pick['locale'].toString(),
-          });
-        }
+      final voiceList = voices is List ? voices.cast<dynamic>() : <dynamic>[];
+
+      // 1. Buscar voz Google en español (la más natural en Android)
+      Map? bestVoice = _findVoice(voiceList, requireGoogle: true);
+      // 2. Si no hay Google, cualquier voz española
+      bestVoice ??= _findVoice(voiceList, requireGoogle: false);
+
+      if (bestVoice != null) {
+        final locale = bestVoice['locale']?.toString() ?? 'es-US';
+        await _tts!.setLanguage(locale);
+        await _tts!.setVoice({
+          'name': bestVoice['name'].toString(),
+          'locale': locale,
+        });
+      } else {
+        // Ninguna voz española instalada — usar locale por defecto
+        await _tts!.setLanguage('es-US');
       }
-      _tts!.setCompletionHandler(() {});
+
+      // Parámetros naturales: ritmo y tono próximos al habla humana
+      await _tts!.setSpeechRate(0.48); // normal Android es 1.0; 0.48 = suave
+      await _tts!.setVolume(1.0);
+      await _tts!.setPitch(1.0);       // 1.0 = tono natural, sin distorsión
+
+      _tts!.setStartHandler(() => _isSpeaking = true);
+      _tts!.setCompletionHandler(() => _isSpeaking = false);
+      _tts!.setCancelHandler(() => _isSpeaking = false);
+      _tts!.setErrorHandler((_) => _isSpeaking = false);
+
       _ttsReady = true;
     } catch (_) {
       _ttsReady = false;
     }
   }
 
+  /// Selecciona la mejor voz española disponible.
+  /// [requireGoogle] = true → solo voces con "google" en el nombre.
+  Map? _findVoice(List<dynamic> voices, {required bool requireGoogle}) {
+    for (final locale in _localePrefs) {
+      for (final v in voices) {
+        if (v is! Map) continue;
+        final name   = v['name']?.toString().toLowerCase() ?? '';
+        final vLocale = v['locale']?.toString() ?? '';
+        if (!vLocale.toLowerCase().startsWith(locale.toLowerCase())) continue;
+        if (requireGoogle && !name.contains('google')) continue;
+        // Preferir voces femeninas (suelen sonar más cálidas para niños)
+        if (name.contains('female') || name.contains('mujer') ||
+            name.contains('sofia') || name.contains('paulina') ||
+            name.contains('monica') || name.contains('laura') ||
+            name.contains('lucia') || name.contains('-f-')) {
+          return v as Map;
+        }
+      }
+      // Segunda pasada: cualquier voz del locale (sin filtro de género)
+      for (final v in voices) {
+        if (v is! Map) continue;
+        final name    = v['name']?.toString().toLowerCase() ?? '';
+        final vLocale = v['locale']?.toString() ?? '';
+        if (!vLocale.toLowerCase().startsWith(locale.toLowerCase())) continue;
+        if (requireGoogle && !name.contains('google')) continue;
+        return v as Map;
+      }
+    }
+    return null;
+  }
+
   // ── TTS principal ──────────────────────────────────────
 
-  /// [rate]  0.75 = instrucción lenta · 0.88 = normal · 1.0 = festivo
-  /// [pitch] 1.25 = amigable para niños · 1.4 = muy animado
+  /// [rate]  escala semántica: 0.75 lento · 1.0 normal · 1.15 animado
+  /// [pitch] 1.0 natural · 1.10 cálido para niños
   Future<void> speak(String text,
-      {double rate = 0.88, double pitch = 1.25}) async {
+      {double rate = 1.0, double pitch = 1.05}) async {
     if (!_ttsReady) return;
+
     if (kIsWeb) {
       _callJs('stopSpeech');
       _callJsWith('speak', [text, rate, pitch]);
-    } else {
-      try {
-        await _tts?.stop();
-        // Los rates del web (0.75–1.0) se escalan a móvil (0.0–0.5)
-        // 0.88 web → ~0.24 móvil (ritmo muy suave para niños)
-        final mobileRate = (rate * 0.28).clamp(0.08, 0.40);
-        await _tts?.setSpeechRate(mobileRate);
-        await _tts?.setPitch(pitch.clamp(0.5, 2.0));
-        await _tts?.speak(text);
-      } catch (_) {}
+      return;
     }
+
+    try {
+      // Parar lo que esté sonando y dar 80 ms para que el motor libere recursos
+      await _tts?.stop();
+      await Future.delayed(const Duration(milliseconds: 80));
+
+      // Mapear la escala semántica (0.75–1.15) al rango Android (0.35–0.60)
+      // rate=0.75 → 0.38  |  rate=1.0 → 0.48  |  rate=1.15 → 0.55
+      final mobileRate = ((rate - 0.75) / 0.40 * 0.17 + 0.38).clamp(0.35, 0.60);
+      await _tts?.setSpeechRate(mobileRate);
+      await _tts?.setPitch(pitch.clamp(0.85, 1.20));
+      await _tts?.speak(text);
+    } catch (_) {}
   }
 
   Future<void> speakNumber(int number) async {
-    // Numbers: slightly slower & higher pitch so kids hear clearly
-    await speak(_numberToWord(number), rate: 0.80, pitch: 1.30);
+    await speak(_numberToWord(number), rate: 0.85, pitch: 1.05);
   }
 
   Future<void> speakInstruction(String activityType) async {
@@ -89,29 +131,28 @@ class AudioService {
       'suma_visual':
           '¡Vamos a sumar! Cuenta todos los objetos juntos.',
       'resta_visual':
-          '¡Vamos a restar! Quita los objetos y cuenta cuántos quedan.',
+          '¡Vamos a restar! Quita los que sobran y cuenta cuántos quedan.',
       'conteo':
           '¡Toca cada objeto una vez para contarlo!',
       'comparar':
-          '¿Cuál grupo tiene más? ¡Mira bien los dos grupos!',
+          '¿Cuál grupo tiene más, menos, o son iguales?',
       'secuencias':
           '¡Ordena los números del más pequeño al más grande!',
       'reconocer_numeros':
           '¿Qué número ves? ¡Dímelo!',
       'subitizacion':
-          '¿Cuántos puntos ves? ¡Mira rápido y responde!',
+          '¿Cuántos puntos ves? ¡Responde rápido sin contar uno por uno!',
       'linea_numerica':
-          '¿Dónde va ese número en la línea? ¡Toca el lugar correcto!',
+          '¿Dónde está ese número en la línea? ¡Toca el lugar correcto!',
       'descomposicion':
           '¿Qué número falta para completar la suma?',
       'trazar_numeros':
           '¡Sigue los puntos en orden para dibujar el número!',
     };
-    // Instructions: slower so kids can follow
     await speak(
       instructions[activityType] ?? '¡Vamos a empezar!',
-      rate: 0.78,
-      pitch: 1.20,
+      rate: 0.82,
+      pitch: 1.05,
     );
   }
 
@@ -125,21 +166,19 @@ class AudioService {
       '¡Súper! ¡Eres una estrella!',
     ];
     final msg = messages[DateTime.now().millisecond % messages.length];
-    // Correct: fast & excited
-    await speak(msg, rate: 0.95, pitch: 1.40);
+    await speak(msg, rate: 1.05, pitch: 1.10);
   }
 
   Future<void> speakIncorrect() async {
     const messages = [
       '¡Casi! Inténtalo de nuevo. ¡Tú puedes!',
-      'No te rindas. Cuenta otra vez despacio.',
+      'No te rindas. Mira bien y cuenta otra vez.',
       'Estás aprendiendo. ¡Vamos de nuevo!',
-      '¡Casi lo tienes! Mira bien y vuelve a intentar.',
-      'Tranquilo, nadie aprende sin equivocarse. ¡Otra vez!',
+      '¡Casi lo tienes! Observa con cuidado.',
+      'Tranquilo, ¡nadie aprende sin equivocarse! ¡Otra vez!',
     ];
     final msg = messages[DateTime.now().millisecond % messages.length];
-    // Incorrect: calm & encouraging
-    await speak(msg, rate: 0.82, pitch: 1.15);
+    await speak(msg, rate: 0.90, pitch: 1.02);
   }
 
   // ── Efectos de sonido — Web Audio API ─────────────────

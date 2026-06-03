@@ -241,6 +241,16 @@ class _ActivityScreenState extends State<ActivityScreen> {
         isPerfect && widget.activity.id == 'secuencias');
     tryUnlock('numero_maestro',
         isPerfect && widget.activity.id == 'reconocer_numeros');
+    tryUnlock('subitizador',
+        isPerfect && widget.activity.id == 'subitizacion');
+    tryUnlock('explorador_numerico',
+        isPerfect && widget.activity.id == 'linea_numerica');
+    tryUnlock('maestro_partes',
+        isPerfect && widget.activity.id == 'descomposicion');
+    tryUnlock('artista_numeros',
+        isPerfect && widget.activity.id == 'trazar_numeros');
+    tryUnlock('maestro_resta',
+        isPerfect && widget.activity.id == 'resta_visual');
 
     setState(() {
       _activityComplete = true;
@@ -675,14 +685,19 @@ class _ActivityScreenState extends State<ActivityScreen> {
                     const SizedBox(height: 10),
                     ..._newAchievements.map((id) {
                       const meta = {
-                        'cien_puntos':    {'emoji': '⭐', 'title': '¡100 puntos!'},
-                        'sin_pistas':     {'emoji': '💪', 'title': 'Sin ayuda'},
-                        'velocista':      {'emoji': '⚡', 'title': 'Velocista'},
-                        'primer_suma':    {'emoji': '🍎', 'title': 'Primera suma'},
-                        'contador_experto': {'emoji': '✋', 'title': 'Contador experto'},
-                        'maestro_comparacion': {'emoji': '📏', 'title': 'Maestro comparador'},
-                        'orden_perfecto': {'emoji': '🔢', 'title': 'Orden perfecto'},
-                        'numero_maestro': {'emoji': '👁️', 'title': 'Maestro de números'},
+                        'cien_puntos':        {'emoji': '⭐', 'title': '¡100 puntos!'},
+                        'sin_pistas':         {'emoji': '💪', 'title': 'Sin ayuda'},
+                        'velocista':          {'emoji': '⚡', 'title': 'Velocista'},
+                        'primer_suma':        {'emoji': '🍎', 'title': 'Primera suma'},
+                        'contador_experto':   {'emoji': '✋', 'title': 'Contador experto'},
+                        'maestro_comparacion':{'emoji': '📏', 'title': 'Maestro comparador'},
+                        'orden_perfecto':     {'emoji': '🔢', 'title': 'Orden perfecto'},
+                        'numero_maestro':     {'emoji': '👁️', 'title': 'Maestro de números'},
+                        'subitizador':        {'emoji': '🎯', 'title': 'Subitizador'},
+                        'explorador_numerico':{'emoji': '🗺️', 'title': 'Explorador numérico'},
+                        'maestro_partes':     {'emoji': '🧩', 'title': 'Maestro de partes'},
+                        'artista_numeros':    {'emoji': '✏️', 'title': 'Artista de números'},
+                        'maestro_resta':      {'emoji': '➖', 'title': 'Maestro de resta'},
                       };
                       final m = meta[id] ?? {'emoji': '🏅', 'title': id};
                       return Padding(
@@ -812,22 +827,32 @@ class _ActivityScreenState extends State<ActivityScreen> {
     // ── Subitización ─────────────────────────────────────
     if (type == ActivityType.subitizacion) {
       return [
-        _q(ts, 1, '¿Cuántos puntos ves?', [3], 3, [2,3,4,5], '🔵', null),
-        _q(ts, 2, '¿Cuántos puntos ves?', [5], 5, [4,5,6,7], '🔵', null),
-        _q(ts, 3, '¿Cuántos puntos ves?', [2], 2, [1,2,3,4], '🔵', null),
-        _q(ts, 4, '¿Cuántos puntos ves?', [7], 7, [6,7,8,9], '🔵', null),
-        _q(ts, 5, '¿Cuántos puntos ves?', [4], 4, [3,4,5,6], '🔵', null),
+        _q(ts, 1,  '¿Cuántos puntos ves?', [3], 3,  [2,3,4,5],   '🔵', null),
+        _q(ts, 2,  '¿Cuántos puntos ves?', [5], 5,  [4,5,6,7],   '🔵', null),
+        _q(ts, 3,  '¿Cuántos puntos ves?', [2], 2,  [1,2,3,4],   '🔵', null),
+        _q(ts, 4,  '¿Cuántos puntos ves?', [7], 7,  [6,7,8,9],   '🔵', null),
+        _q(ts, 5,  '¿Cuántos puntos ves?', [4], 4,  [3,4,5,6],   '🔵', null),
+        _q(ts, 6,  '¿Cuántos puntos ves?', [6], 6,  [5,6,7,8],   '🔵', null),
+        _q(ts, 7,  '¿Cuántos puntos ves?', [1], 1,  [1,2,3,4],   '🔵', null),
+        _q(ts, 8,  '¿Cuántos puntos ves?', [8], 8,  [7,8,9,10],  '🔵', null),
+        _q(ts, 9,  '¿Cuántos puntos ves?', [9], 9,  [7,8,9,10],  '🔵', null),
+        _q(ts, 10, '¿Cuántos puntos ves?', [10], 10, [8,9,10,11], '🔵', null),
       ];
     }
 
     // ── Línea numérica ────────────────────────────────────
     if (type == ActivityType.lineaNumerica) {
       return [
-        _q(ts, 1, '¿Dónde va el 3 en la línea?',  [3,10],  3, [1,2,3,4],  null, null),
-        _q(ts, 2, '¿Dónde va el 7 en la línea?',  [7,10],  7, [5,6,7,8],  null, null),
-        _q(ts, 3, '¿Dónde va el 1 en la línea?',  [1,10],  1, [1,2,3,4],  null, null),
-        _q(ts, 4, '¿Dónde va el 9 en la línea?',  [9,10],  9, [7,8,9,10], null, null),
-        _q(ts, 5, '¿Dónde va el 5 en la línea?',  [5,10],  5, [4,5,6,7],  null, null),
+        _q(ts, 1,  '¿Dónde va el 3 en la línea?',  [3,10],  3,  [1,2,3,4],   null, null),
+        _q(ts, 2,  '¿Dónde va el 7 en la línea?',  [7,10],  7,  [5,6,7,8],   null, null),
+        _q(ts, 3,  '¿Dónde va el 1 en la línea?',  [1,10],  1,  [1,2,3,4],   null, null),
+        _q(ts, 4,  '¿Dónde va el 9 en la línea?',  [9,10],  9,  [7,8,9,10],  null, null),
+        _q(ts, 5,  '¿Dónde va el 5 en la línea?',  [5,10],  5,  [4,5,6,7],   null, null),
+        _q(ts, 6,  '¿Dónde va el 2 en la línea?',  [2,10],  2,  [1,2,3,4],   null, null),
+        _q(ts, 7,  '¿Dónde va el 8 en la línea?',  [8,10],  8,  [6,7,8,9],   null, null),
+        _q(ts, 8,  '¿Dónde va el 4 en la línea?',  [4,10],  4,  [2,3,4,5],   null, null),
+        _q(ts, 9,  '¿Dónde va el 6 en la línea?',  [6,10],  6,  [4,5,6,7],   null, null),
+        _q(ts, 10, '¿Dónde va el 10 en la línea?', [10,10], 10, [8,9,10,11], null, null),
       ];
     }
 
@@ -835,33 +860,48 @@ class _ActivityScreenState extends State<ActivityScreen> {
     // operands: [total, parte_conocida] — correctAnswer = parte_desconocida
     if (type == ActivityType.descomposicion) {
       return [
-        _q(ts, 1, '¿Qué número falta? 3 + ? = 5', [5, 3], 2, [1,2,3,4], '❤️', '⭐'),
-        _q(ts, 2, '¿Qué número falta? 2 + ? = 6', [6, 2], 4, [2,3,4,5], '🍎', '🍊'),
-        _q(ts, 3, '¿Qué número falta? 4 + ? = 7', [7, 4], 3, [1,2,3,4], '🌟', '🌙'),
-        _q(ts, 4, '¿Qué número falta? 1 + ? = 4', [4, 1], 3, [2,3,4,5], '🐶', '🐱'),
-        _q(ts, 5, '¿Qué número falta? 5 + ? = 9', [9, 5], 4, [2,3,4,5], '🍓', '🍇'),
+        _q(ts, 1,  '¿Qué número falta? 3 + ? = 5',  [5, 3],  2, [1,2,3,4], '❤️', '⭐'),
+        _q(ts, 2,  '¿Qué número falta? 2 + ? = 6',  [6, 2],  4, [2,3,4,5], '🍎', '🍊'),
+        _q(ts, 3,  '¿Qué número falta? 4 + ? = 7',  [7, 4],  3, [1,2,3,4], '🌟', '🌙'),
+        _q(ts, 4,  '¿Qué número falta? 1 + ? = 4',  [4, 1],  3, [2,3,4,5], '🐶', '🐱'),
+        _q(ts, 5,  '¿Qué número falta? 5 + ? = 9',  [9, 5],  4, [2,3,4,5], '🍓', '🍇'),
+        _q(ts, 6,  '¿Qué número falta? 2 + ? = 5',  [5, 2],  3, [1,2,3,4], '❤️', '🌟'),
+        _q(ts, 7,  '¿Qué número falta? 3 + ? = 8',  [8, 3],  5, [3,4,5,6], '🍎', '🍊'),
+        _q(ts, 8,  '¿Qué número falta? 6 + ? = 10', [10, 6], 4, [2,3,4,5], '🐶', '🐱'),
+        _q(ts, 9,  '¿Qué número falta? 1 + ? = 7',  [7, 1],  6, [4,5,6,7], '🌙', '⭐'),
+        _q(ts, 10, '¿Qué número falta? 4 + ? = 9',  [9, 4],  5, [3,4,5,6], '🍓', '🍇'),
       ];
     }
 
     // ── Trazar números ────────────────────────────────────
     if (type == ActivityType.trazarNumeros) {
       return [
-        _q(ts, 1, 'Traza el número 3', [3], 3, [1,2,3,4], null, null),
-        _q(ts, 2, 'Traza el número 5', [5], 5, [3,4,5,6], null, null),
-        _q(ts, 3, 'Traza el número 1', [1], 1, [1,2,3,4], null, null),
-        _q(ts, 4, 'Traza el número 7', [7], 7, [5,6,7,8], null, null),
-        _q(ts, 5, 'Traza el número 4', [4], 4, [2,3,4,5], null, null),
+        _q(ts, 1,  'Traza el número 3',  [3],  3,  [1,2,3,4],   null, null),
+        _q(ts, 2,  'Traza el número 5',  [5],  5,  [3,4,5,6],   null, null),
+        _q(ts, 3,  'Traza el número 1',  [1],  1,  [1,2,3,4],   null, null),
+        _q(ts, 4,  'Traza el número 7',  [7],  7,  [5,6,7,8],   null, null),
+        _q(ts, 5,  'Traza el número 4',  [4],  4,  [2,3,4,5],   null, null),
+        _q(ts, 6,  'Traza el número 2',  [2],  2,  [1,2,3,4],   null, null),
+        _q(ts, 7,  'Traza el número 6',  [6],  6,  [4,5,6,7],   null, null),
+        _q(ts, 8,  'Traza el número 9',  [9],  9,  [7,8,9,10],  null, null),
+        _q(ts, 9,  'Traza el número 8',  [8],  8,  [6,7,8,9],   null, null),
+        _q(ts, 10, 'Traza el número 10', [10], 10, [8,9,10,11], null, null),
       ];
     }
 
     // ── Conteo ────────────────────────────────────────────
     if (type == ActivityType.conteo) {
       return [
-        _q(ts, 1, 'Toca cada objeto para contarlo', [3], 3, [2,3,4,5], '🐶', null),
-        _q(ts, 2, 'Toca cada objeto para contarlo', [5], 5, [4,5,6,7], '🐱', null),
-        _q(ts, 3, 'Toca cada objeto para contarlo', [4], 4, [3,4,5,6], '🐸', null),
-        _q(ts, 4, 'Toca cada objeto para contarlo', [2], 2, [1,2,3,4], '🦋', null),
-        _q(ts, 5, 'Toca cada objeto para contarlo', [6], 6, [5,6,7,8], '⭐', null),
+        _q(ts, 1,  'Toca cada objeto para contarlo', [3],  3,  [2,3,4,5],   '🐶', null),
+        _q(ts, 2,  'Toca cada objeto para contarlo', [5],  5,  [4,5,6,7],   '🐱', null),
+        _q(ts, 3,  'Toca cada objeto para contarlo', [4],  4,  [3,4,5,6],   '🐸', null),
+        _q(ts, 4,  'Toca cada objeto para contarlo', [2],  2,  [1,2,3,4],   '🦋', null),
+        _q(ts, 5,  'Toca cada objeto para contarlo', [6],  6,  [5,6,7,8],   '⭐', null),
+        _q(ts, 6,  'Toca cada objeto para contarlo', [7],  7,  [6,7,8,9],   '🌸', null),
+        _q(ts, 7,  'Toca cada objeto para contarlo', [1],  1,  [1,2,3,4],   '🐣', null),
+        _q(ts, 8,  'Toca cada objeto para contarlo', [8],  8,  [7,8,9,10],  '🍄', null),
+        _q(ts, 9,  'Toca cada objeto para contarlo', [9],  9,  [7,8,9,10],  '🐢', null),
+        _q(ts, 10, 'Toca cada objeto para contarlo', [10], 10, [8,9,10,11], '🐠', null),
       ];
     }
 
@@ -898,34 +938,51 @@ class _ActivityScreenState extends State<ActivityScreen> {
     }
 
     // ── Comparar ──────────────────────────────────────────
+    // operands: [num1, num2] — correctAnswer: 1=menor(<), 2=igual(=), 3=mayor(>)
+    // choices must always be [1, 2, 3] (symbol codes)
     if (type == ActivityType.comparar) {
       return [
-        _q(ts, 1, '¿Cuál grupo tiene más?', [3, 5], 5, [3,4,5,6], '🍎', '🍊'),
-        _q(ts, 2, '¿Cuál grupo tiene más?', [6, 2], 6, [2,4,6,8], '🌟', '🌙'),
-        _q(ts, 3, '¿Cuál grupo tiene más?', [4, 7], 7, [4,5,6,7], '🐶', '🐱'),
-        _q(ts, 4, '¿Cuál grupo tiene más?', [1, 3], 3, [1,2,3,4], '🍓', '🍇'),
-        _q(ts, 5, '¿Cuál grupo tiene más?', [5, 2], 5, [2,3,4,5], '❤️', '💙'),
+        _q(ts, 1,  '¿3 es menor, igual o mayor que 5?',  [3, 5], 1, [1,2,3], '🍎', '🍊'),
+        _q(ts, 2,  '¿6 es menor, igual o mayor que 2?',  [6, 2], 3, [1,2,3], '🌟', '🌙'),
+        _q(ts, 3,  '¿4 es menor, igual o mayor que 7?',  [4, 7], 1, [1,2,3], '🐶', '🐱'),
+        _q(ts, 4,  '¿1 es menor, igual o mayor que 3?',  [1, 3], 1, [1,2,3], '🍓', '🍇'),
+        _q(ts, 5,  '¿5 es menor, igual o mayor que 2?',  [5, 2], 3, [1,2,3], '❤️', '💙'),
+        _q(ts, 6,  '¿4 es menor, igual o mayor que 4?',  [4, 4], 2, [1,2,3], '🍎', '🍎'),
+        _q(ts, 7,  '¿2 es menor, igual o mayor que 8?',  [2, 8], 1, [1,2,3], '🐱', '🐶'),
+        _q(ts, 8,  '¿7 es menor, igual o mayor que 3?',  [7, 3], 3, [1,2,3], '🌟', '⭐'),
+        _q(ts, 9,  '¿6 es menor, igual o mayor que 6?',  [6, 6], 2, [1,2,3], '🍊', '🍊'),
+        _q(ts, 10, '¿1 es menor, igual o mayor que 9?',  [1, 9], 1, [1,2,3], '🍓', '🍇'),
       ];
     }
 
     // ── Resta visual ──────────────────────────────────────
     if (type == ActivityType.restaVisual) {
       return [
-        _q(ts, 1, '¿Cuánto es 5 − 2?', [5, 2], 3, [2,3,4,5], '🍎', '🍊'),
-        _q(ts, 2, '¿Cuánto es 6 − 3?', [6, 3], 3, [2,3,4,5], '🌟', '🌙'),
-        _q(ts, 3, '¿Cuánto es 4 − 1?', [4, 1], 3, [1,2,3,4], '🐶', '🐱'),
-        _q(ts, 4, '¿Cuánto es 7 − 4?', [7, 4], 3, [2,3,4,5], '🍓', '🍇'),
-        _q(ts, 5, '¿Cuánto es 3 − 2?', [3, 2], 1, [1,2,3,4], '❤️', '💙'),
+        _q(ts, 1,  '¿Cuánto es 5 − 2?',  [5, 2],  3, [2,3,4,5],  '🍎', '🍊'),
+        _q(ts, 2,  '¿Cuánto es 6 − 3?',  [6, 3],  3, [2,3,4,5],  '🌟', '🌙'),
+        _q(ts, 3,  '¿Cuánto es 4 − 1?',  [4, 1],  3, [1,2,3,4],  '🐶', '🐱'),
+        _q(ts, 4,  '¿Cuánto es 7 − 4?',  [7, 4],  3, [2,3,4,5],  '🍓', '🍇'),
+        _q(ts, 5,  '¿Cuánto es 3 − 2?',  [3, 2],  1, [1,2,3,4],  '❤️', '💙'),
+        _q(ts, 6,  '¿Cuánto es 8 − 3?',  [8, 3],  5, [4,5,6,7],  '🍎', '🌟'),
+        _q(ts, 7,  '¿Cuánto es 9 − 5?',  [9, 5],  4, [2,3,4,5],  '🐶', '🐸'),
+        _q(ts, 8,  '¿Cuánto es 10 − 4?', [10, 4], 6, [5,6,7,8],  '🌸', '🍊'),
+        _q(ts, 9,  '¿Cuánto es 6 − 2?',  [6, 2],  4, [2,3,4,5],  '🍓', '🍇'),
+        _q(ts, 10, '¿Cuánto es 5 − 3?',  [5, 3],  2, [1,2,3,4],  '🌙', '⭐'),
       ];
     }
 
     // ── Suma visual (default) ─────────────────────────────
     return [
-      _q(ts, 1, '¿Cuánto es 2 + 3?', [2, 3], 5, [4,5,6,7], '🌟', '🌙'),
-      _q(ts, 2, '¿Cuánto es 1 + 4?', [1, 4], 5, [3,4,5,6], '🍊', '🍊'),
-      _q(ts, 3, '¿Cuánto es 3 + 2?', [3, 2], 5, [4,5,6,7], '🐶', '🐱'),
-      _q(ts, 4, '¿Cuánto es 2 + 2?', [2, 2], 4, [3,4,5,6], '🍎', '🍎'),
-      _q(ts, 5, '¿Cuánto es 1 + 3?', [1, 3], 4, [2,3,4,5], '🍓', '🍇'),
+      _q(ts, 1,  '¿Cuánto es 2 + 3?', [2, 3], 5,  [4,5,6,7],   '🌟', '🌙'),
+      _q(ts, 2,  '¿Cuánto es 1 + 4?', [1, 4], 5,  [3,4,5,6],   '🍊', '🍊'),
+      _q(ts, 3,  '¿Cuánto es 3 + 2?', [3, 2], 5,  [4,5,6,7],   '🐶', '🐱'),
+      _q(ts, 4,  '¿Cuánto es 2 + 2?', [2, 2], 4,  [3,4,5,6],   '🍎', '🍎'),
+      _q(ts, 5,  '¿Cuánto es 1 + 3?', [1, 3], 4,  [2,3,4,5],   '🍓', '🍇'),
+      _q(ts, 6,  '¿Cuánto es 4 + 3?', [4, 3], 7,  [5,6,7,8],   '🌸', '🌙'),
+      _q(ts, 7,  '¿Cuánto es 3 + 4?', [3, 4], 7,  [5,6,7,8],   '🐸', '🐶'),
+      _q(ts, 8,  '¿Cuánto es 5 + 3?', [5, 3], 8,  [6,7,8,9],   '🍊', '🍎'),
+      _q(ts, 9,  '¿Cuánto es 2 + 6?', [2, 6], 8,  [6,7,8,9],   '⭐', '🌟'),
+      _q(ts, 10, '¿Cuánto es 4 + 5?', [4, 5], 9,  [7,8,9,10],  '🍓', '🍇'),
     ];
   }
 
