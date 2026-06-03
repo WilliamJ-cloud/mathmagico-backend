@@ -95,7 +95,7 @@ class _DiagnosticoScreenState extends State<DiagnosticoScreen>
   void _seleccionar(String opcion) {
     if (_respondida) return;
     setState(() {
-      _seleccionada = opcion;
+      _seleccionada = opcion.trim();
       _respondida = true;
     });
     // Espera 1 segundo para mostrar feedback, luego avanza
@@ -130,9 +130,37 @@ class _DiagnosticoScreenState extends State<DiagnosticoScreen>
       respuestas: _respuestas,
     );
     if (mounted) {
-      setState(() { _resultado = res; _enviando = false; });
-      if (res != null) {
-        context.read<AudioService>().speak(res['mensaje'] ?? '');
+      // Calcular resultado local si el backend falla
+      final correctasLocal = _respuestas.where((r) {
+        final p = _preguntas.firstWhere(
+          (p) => p['id'].toString() == r['pregunta_id'].toString(),
+          orElse: () => <String, dynamic>{});
+        return p.isNotEmpty && p['correcta'].toString().trim() == r['respuesta'].toString().trim();
+      }).length;
+      final pctLocal = (_preguntas.isNotEmpty)
+          ? correctasLocal / _preguntas.length * 100 : 0.0;
+
+      setState(() {
+        _resultado = res ?? {
+          'porcentaje': pctLocal,
+          'correctas': correctasLocal,
+          'total': _preguntas.length,
+          'nivel_riesgo': pctLocal >= 85 ? 'sin_indicadores'
+              : pctLocal >= 70 ? 'leve'
+              : pctLocal >= 50 ? 'moderado' : 'alto',
+          'etiqueta_nivel': pctLocal >= 85 ? 'Sin indicadores significativos'
+              : pctLocal >= 70 ? 'Dificultades leves'
+              : pctLocal >= 50 ? 'Dificultades moderadas'
+              : 'Posibles indicadores de discalculia',
+          'debilidades': [],
+          'mensaje': '¡Terminaste la evaluación! Obtuviste ${pctLocal.toStringAsFixed(0)}% de respuestas correctas.',
+          'actividades_recomendadas': ['conteo', 'suma_visual', 'comparar'],
+        };
+        _enviando = false;
+      });
+      final msg = _resultado?['mensaje'] as String? ?? '';
+      if (msg.isNotEmpty && mounted) {
+        context.read<AudioService>().speak(msg);
       }
     }
   }
@@ -280,68 +308,20 @@ class _DiagnosticoScreenState extends State<DiagnosticoScreen>
                           const SizedBox(height: 16),
 
                           // ── Opciones ──────────────────────
-                          GridView.count(
-                            crossAxisCount: 2,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            crossAxisSpacing: 10,
-                            mainAxisSpacing: 10,
-                            childAspectRatio: 2.2,
-                            children: opciones.map((op) {
-                              final esSeleccionada = _seleccionada == op;
-                              final esCorrecta     = op == correcta;
-                              Color bgColor = Colors.white;
-                              Color textColor = _colorActual;
-                              Color borderColor = _colorActual.withOpacity(0.3);
-                              String prefijo = '';
-
-                              if (_respondida) {
-                                if (esCorrecta) {
-                                  bgColor = const Color(0xFF43A047);
-                                  textColor = Colors.white;
-                                  borderColor = const Color(0xFF43A047);
-                                  prefijo = '✅ ';
-                                } else if (esSeleccionada) {
-                                  bgColor = const Color(0xFFE53935);
-                                  textColor = Colors.white;
-                                  borderColor = const Color(0xFFE53935);
-                                  prefijo = '❌ ';
-                                } else {
-                                  bgColor = Colors.white.withOpacity(0.5);
-                                  textColor = Colors.grey;
-                                }
-                              }
-
-                              return GestureDetector(
-                                onTap: () => _seleccionar(op),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  decoration: BoxDecoration(
-                                    color: bgColor,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: borderColor, width: 2),
-                                    boxShadow: esSeleccionada ? [BoxShadow(
-                                      color: bgColor.withOpacity(0.4),
-                                      blurRadius: 8, offset: const Offset(0, 4),
-                                    )] : [],
-                                  ),
-                                  child: Center(
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                                      child: Text(
-                                        '$prefijo$op',
-                                        style: GoogleFonts.nunito(
-                                          fontSize: 15, fontWeight: FontWeight.w800,
-                                          color: textColor),
-                                        textAlign: TextAlign.center,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
+                          Column(
+                            children: [
+                              Row(children: [
+                                _opcionBtn(opciones[0], correcta, 0, _seleccionada, _respondida),
+                                const SizedBox(width: 12),
+                                _opcionBtn(opciones[1], correcta, 1, _seleccionada, _respondida),
+                              ]),
+                              const SizedBox(height: 12),
+                              Row(children: [
+                                _opcionBtn(opciones[2], correcta, 2, _seleccionada, _respondida),
+                                const SizedBox(width: 12),
+                                _opcionBtn(opciones[3], correcta, 3, _seleccionada, _respondida),
+                              ]),
+                            ],
                           ),
                           const SizedBox(height: 16),
                         ],
@@ -569,6 +549,69 @@ class _DiagnosticoScreenState extends State<DiagnosticoScreen>
             }).toList(),
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Botón de opción grande y dinámico ────────────────────────────────────
+  Widget _opcionBtn(String op, String correcta, int idx, String? seleccionada, bool respondida) {
+    final esSeleccionada = seleccionada?.trim() == op.trim();
+    final esCorrecta     = op.trim() == correcta.trim();
+
+    // Colores base por índice (A=azul, B=verde, C=naranja, D=morado)
+    final coloresBase = [
+      const Color(0xFF1565C0),
+      const Color(0xFF2E7D32),
+      const Color(0xFFE65100),
+      const Color(0xFF6A1B9A),
+    ];
+    Color bgColor   = coloresBase[idx];
+    String icono    = '';
+
+    if (respondida) {
+      if (esCorrecta) {
+        bgColor = const Color(0xFF43A047);  // verde = respuesta correcta
+        icono   = '✅ ';
+      } else if (esSeleccionada) {
+        bgColor = const Color(0xFFE53935);  // rojo = eligió incorrecta
+        icono   = '❌ ';
+      } else {
+        bgColor = Colors.grey.shade400;     // gris = no elegida
+      }
+    }
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _seleccionar(op),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          height: 90,
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [BoxShadow(
+              color: bgColor.withOpacity(0.5),
+              blurRadius: 10, offset: const Offset(0, 5),
+            )],
+          ),
+          child: Center(
+            child: Text(
+              '$icono$op',
+              style: GoogleFonts.nunito(
+                fontSize: op.length <= 2 ? 38 : 20,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                shadows: [Shadow(
+                  color: Colors.black26,
+                  blurRadius: 4,
+                  offset: const Offset(1, 2),
+                )],
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+            ),
+          ),
+        ),
       ),
     );
   }

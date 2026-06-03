@@ -137,6 +137,7 @@ class DiagnosticoPreguntaResponse(BaseModel):
     emoji: str
     audio: str
     opciones: List[str]
+    correcta: str
     indicador: str
 
 
